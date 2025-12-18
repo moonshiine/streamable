@@ -2,36 +2,29 @@
   "2788229376": {
     "RemoteName": "MainEvent",
     "RemoteParent": "ReplicatedStorage",
-    "ArgName": "UpdateMousePosI2"
+    "ArgName": "UpdateMousePosI2",
+    "UseOldSystem": false,
+    "NeedAimviewer": true
   },
   "7213786345": {
     "RemoteName": "MainEvent",
     "RemoteParent": "ReplicatedStorage",
-    "ArgName": "UpdateMousePosI2"
-  },
-  "16033173781": {
-    "RemoteName": "MainEvent",
-    "RemoteParent": "ReplicatedStorage",
-    "ArgName": "UpdateMousePosI2"
-  },
-  "75203333702480": {
-    "RemoteName": "MainRemoteEvent",
-    "RemoteParent": "Remotes",
-    "ArgName": "Z3eHooDMSOUEPoS233^+"
+    "ArgName": "UpdateMousePosI2",
+    "UseOldSystem": false,
+    "NeedAimviewer": true
   },
   "131984654356230": {
     "RemoteName": "MainEvent",
     "RemoteParent": "ReplicatedStorage",
-    "ArgName": "UpdateMousePos"
+    "ArgName": "UpdateMousePos",
+    "UseOldSystem": false,
+    "NeedAimviewer": true
   },
   "108590068984015": {
     "RemoteName": "MainRemoteEvent",
     "RemoteParent": "MainRemotes",
-    "ArgName": "DEAHOODMOUSEPOSx3^3"
-  },
-  "78289058599561": {
-    "RemoteName": "MainRemoteEvent",
-    "RemoteParent": "MainRemotes",
-    "ArgName": "XEEHOODMOUSEPOSx3^3"
+    "ArgName": "DEAHOODMOUSEPOSx3^3",
+    "UseOldSystem": true,
+    "NeedAimviewer": false
   }
 }

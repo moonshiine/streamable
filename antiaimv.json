@@ -4,6 +4,16 @@
     "RemoteParent": "ReplicatedStorage",
     "ArgName": "UpdateMousePosI2"
   },
+  "7213786345": {
+    "RemoteName": "MainEvent",
+    "RemoteParent": "ReplicatedStorage",
+    "ArgName": "UpdateMousePosI2"
+  },
+  "16033173781": {
+    "RemoteName": "MainEvent",
+    "RemoteParent": "ReplicatedStorage",
+    "ArgName": "UpdateMousePosI2"
+  },
   "75203333702480": {
     "RemoteName": "MainRemoteEvent",
     "RemoteParent": "Remotes",

@@ -1,0 +1,27 @@
+{
+  "2788229376": {
+    "RemoteName": "MainEvent",
+    "RemoteParent": "ReplicatedStorage",
+    "ArgName": "UpdateMousePosI2"
+  },
+  "75203333702480": {
+    "RemoteName": "MainRemoteEvent",
+    "RemoteParent": "Remotes",
+    "ArgName": "Z3eHooDMSOUEPoS233^+"
+  },
+  "131984654356230": {
+    "RemoteName": "MainEvent",
+    "RemoteParent": "ReplicatedStorage",
+    "ArgName": "UpdateMousePos"
+  },
+  "108590068984015": {
+    "RemoteName": "MainEvent",
+    "RemoteParent": "MainRemotes",
+    "ArgName": "MainRemoteEvent"
+  },
+  "78289058599561": {
+    "RemoteName": "MainRemoteEvent",
+    "RemoteParent": "MainRemotes",
+    "ArgName": "XEEHOODMOUSEPOSx3^3"
+  }
+}

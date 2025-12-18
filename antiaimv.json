@@ -32,6 +32,14 @@
     "NeedAimviewer": false,
      "Adonis": false
   },
+   "136445500005916": {
+    "RemoteName": "MAINEVENT",
+    "RemoteParent": "ReplicatedStorage",
+    "ArgName": "MOUSE",
+    "UseOldSystem": false,
+    "NeedAimviewer": false,
+     "Adonis": false
+  },
   "131984654356230": {
     "RemoteName": "MainEvent",
     "RemoteParent": "ReplicatedStorage",

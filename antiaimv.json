@@ -4,27 +4,32 @@
     "RemoteParent": "ReplicatedStorage",
     "ArgName": "UpdateMousePosI2",
     "UseOldSystem": false,
-    "NeedAimviewer": true
+    "NeedAimviewer": true,
+    "Adonis": false
+    
   },
   "7213786345": {
     "RemoteName": "MainEvent",
     "RemoteParent": "ReplicatedStorage",
     "ArgName": "UpdateMousePosI2",
     "UseOldSystem": false,
-    "NeedAimviewer": true
+    "NeedAimviewer": true,
+     "Adonis": false
   },
   "131984654356230": {
     "RemoteName": "MainEvent",
     "RemoteParent": "ReplicatedStorage",
     "ArgName": "UpdateMousePos",
     "UseOldSystem": false,
-    "NeedAimviewer": true
+    "NeedAimviewer": true,
+     "Adonis": true
   },
   "108590068984015": {
     "RemoteName": "MainRemoteEvent",
     "RemoteParent": "MainRemotes",
     "ArgName": "DEAHOODMOUSEPOSx3^3",
     "UseOldSystem": true,
-    "NeedAimviewer": false
+    "NeedAimviewer": false,
+    "Adonis": true
   }
 }

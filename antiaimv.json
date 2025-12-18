@@ -25,7 +25,7 @@
     "ArgName": "UpdateMousePos"
   },
   "108590068984015": {
-    "RemoteName": "MainEvent",
+    "RemoteName": "MainRemoteEvent",
     "RemoteParent": "MainRemotes",
     "ArgName": "DEAHOODMOUSEPOSx3^3"
   },

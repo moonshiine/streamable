@@ -24,6 +24,22 @@
     "NeedAimviewer": false,
      "Adonis": false
   },
+   "138995385694035": {
+    "RemoteName": "MainEvent",
+    "RemoteParent": "MainEvent",
+    "ArgName": "ReplicatedStorage",
+    "UseOldSystem": false,
+    "NeedAimviewer": false,
+     "Adonis": false
+  },
+    "80567999110374": {
+    "RemoteName": "MainEvent",
+    "RemoteParent": "MainEvent",
+    "ArgName": "ReplicatedStorage",
+    "UseOldSystem": false,
+    "NeedAimviewer": false,
+     "Adonis": false
+  },
   "75159825516372": {
     "RemoteName": "MainEvent",
     "RemoteParent": "ReplicatedStorage",

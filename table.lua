@@ -11,11 +11,11 @@ shared.Moonshine = {
     Visuals = {
         FOV = {
             Silent = {
-                Visible = true,
+                Visible = false,
                 Transparency = 1,
                 Thickness = 1,
                 Color = Color3.fromRGB(72, 0, 255),
-                Radius = 120,
+                Radius = 50,
                 VisualizeClosest = false,
                 Dynamic = false,
                 Ranges = { Close = 55, CloseDist = 15, Mid = 34, MidDist = 30, Far = 15 },
@@ -61,7 +61,6 @@ shared.Moonshine = {
             Part = "UpperTorso",
             Closest = true,
             Notify = false,
-            Offset = { Enabled = true, Jump = 1.7, Fall = 1 },
             AimbotOffsets = {
                 Enabled = true,
                 Jump = 1.7,

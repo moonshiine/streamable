@@ -64,6 +64,22 @@
     "NeedAimviewer": true,
      "Adonis": true
   },
+    "131984654356230": {
+    "RemoteName": "MainEvent",
+    "RemoteParent": "ReplicatedStorage",
+    "ArgName": "UpdateMousePos",
+    "UseOldSystem": false,
+    "NeedAimviewer": true,
+     "Adonis": true
+  },
+    "75159825516372": {
+    "RemoteName": "MainEvent",
+    "RemoteParent": "ReplicatedStorage",
+    "ArgName": "UpdateMousePos",
+    "UseOldSystem": false,
+    "NeedAimviewer": true,
+     "Adonis": false
+  },
   "108590068984015": {
     "RemoteName": "MainRemoteEvent",
     "RemoteParent": "MainRemotes",

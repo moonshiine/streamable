@@ -81,8 +81,8 @@
      "Adonis": false
   },
     "123321059068622": {
-    "RemoteName": "MainEvent",
-    "RemoteParent": "MainRemoteEvent",
+    "RemoteName": "MainRemoteEvent", 
+    "RemoteParent": "MainEvent",
     "ArgName": "DEAHOODMOUSEPOSx3^3",
     "UseOldSystem": false,
     "NeedAimviewer": true,

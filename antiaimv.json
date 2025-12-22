@@ -88,6 +88,22 @@
     "NeedAimviewer": false,
      "Adonis": true
   },
+    "138388180823149": {
+    "RemoteName": "MainEvent", 
+    "RemoteParent": "Replication.Communication.Remote Events",
+    "ArgName": "UpdateMousePos",
+    "UseOldSystem": false,
+    "NeedAimviewer": true,
+     "Adonis": true
+  },
+    "125011416059720": {
+    "RemoteName": "MainRemoteEvent", 
+    "RemoteParent": "Remotes",
+    "ArgName": "Z3eHooDMSOUEPoS233^+",
+    "UseOldSystem": false,
+    "NeedAimviewer": true,
+    "Adonis": true
+  },
   "108590068984015": {
     "RemoteName": "MainRemoteEvent",
     "RemoteParent": "MainRemotes",

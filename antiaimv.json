@@ -80,6 +80,14 @@
     "NeedAimviewer": true,
      "Adonis": true
   },
+    "123425342248892": {
+    "RemoteName": "MainRemoteEvent", 
+    "RemoteParent": "MainRemotes",
+    "ArgName": "D3RHooDMSOUEPoS233^+",
+    "UseOldSystem": false,
+    "NeedAimviewer": false,
+     "Adonis": true
+  },
   "108590068984015": {
     "RemoteName": "MainRemoteEvent",
     "RemoteParent": "MainRemotes",

@@ -74,7 +74,7 @@
   },
     "123321059068622": {
     "RemoteName": "MainRemoteEvent", 
-    "RemoteParent": "MainEvent",
+    "RemoteParent": "MainRemotes",
     "ArgName": "DEAHOODMOUSEPOSx3^3",
     "UseOldSystem": false,
     "NeedAimviewer": true,

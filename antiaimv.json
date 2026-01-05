@@ -6,7 +6,6 @@
     "UseOldSystem": false,
     "NeedAimviewer": true,
     "Adonis": false
-    
   },
   "7213786345": {
     "RemoteName": "MainEvent",
@@ -14,31 +13,31 @@
     "ArgName": "UpdateMousePosI2",
     "UseOldSystem": false,
     "NeedAimviewer": true,
-     "Adonis": false
+    "Adonis": false
   },
-    "9825515356": {
+  "9825515356": {
     "RemoteName": "MainEvent",
     "RemoteParent": "MainEvent",
     "ArgName": "ReplicatedStorage",
     "UseOldSystem": false,
     "NeedAimviewer": false,
-     "Adonis": false
+    "Adonis": false
   },
-   "138995385694035": {
+  "138995385694035": {
     "RemoteName": "MainEvent",
     "RemoteParent": "MainEvent",
     "ArgName": "ReplicatedStorage",
     "UseOldSystem": false,
     "NeedAimviewer": false,
-     "Adonis": false
+    "Adonis": false
   },
-    "80567999110374": {
+  "80567999110374": {
     "RemoteName": "MainEvent",
     "RemoteParent": "MainEvent",
     "ArgName": "ReplicatedStorage",
     "UseOldSystem": false,
     "NeedAimviewer": false,
-     "Adonis": false
+    "Adonis": false
   },
   "75159825516372": {
     "RemoteName": "MainEvent",
@@ -46,15 +45,15 @@
     "ArgName": "UpdateMousePosI2",
     "UseOldSystem": false,
     "NeedAimviewer": false,
-     "Adonis": false
+    "Adonis": false
   },
-   "136445500005916": {
+  "136445500005916": {
     "RemoteName": "MAINEVENT",
     "RemoteParent": "ReplicatedStorage",
     "ArgName": "MOUSE",
     "UseOldSystem": false,
     "NeedAimviewer": false,
-     "Adonis": false
+    "Adonis": false
   },
   "131984654356230": {
     "RemoteName": "MainEvent",
@@ -62,42 +61,42 @@
     "ArgName": "UpdateMousePos",
     "UseOldSystem": false,
     "NeedAimviewer": true,
-     "Adonis": true
+    "Adonis": true
   },
-    "73583590887289": {
+  "73583590887289": {
     "RemoteName": "MainEvent",
     "RemoteParent": "ReplicatedStorage",
     "ArgName": "UpdateMousePos",
     "UseOldSystem": false,
     "NeedAimviewer": false,
-     "Adonis": false
+    "Adonis": false
   },
-    "123321059068622": {
-    "RemoteName": "MainRemoteEvent", 
+  "123321059068622": {
+    "RemoteName": "MainRemoteEvent",
     "RemoteParent": "MainRemotes",
     "ArgName": "DEAHOODMOUSEPOSx3^3",
     "UseOldSystem": false,
     "NeedAimviewer": true,
-     "Adonis": true
+    "Adonis": true
   },
-    "123425342248892": {
-    "RemoteName": "MainRemoteEvent", 
+  "123425342248892": {
+    "RemoteName": "MainRemoteEvent",
     "RemoteParent": "MainRemotes",
     "ArgName": "D3RHooDMSOUEPoS233^+",
     "UseOldSystem": false,
     "NeedAimviewer": false,
-     "Adonis": true
+    "Adonis": true
   },
-    "138388180823149": {
-    "RemoteName": "MainEvent", 
+  "138388180823149": {
+    "RemoteName": "MainEvent",
     "RemoteParent": "Replication.Communication.Remote Events",
     "ArgName": "UpdateMousePos",
     "UseOldSystem": false,
-    "NeedAimviewer": true,
-     "Adonis": true
+    "NeedAimviewer": false,
+    "Adonis": true
   },
-    "125011416059720": {
-    "RemoteName": "MainRemoteEvent", 
+  "125011416059720": {
+    "RemoteName": "MainRemoteEvent",
     "RemoteParent": "Remotes",
     "ArgName": "Z3eHooDMSOUEPoS233^+",
     "UseOldSystem": false,
@@ -111,5 +110,37 @@
     "UseOldSystem": true,
     "NeedAimviewer": false,
     "Adonis": true
+  },
+  "89761652877122": {
+    "RemoteName": "Unreliable",
+    "RemoteParent": "ReplicatedStorage.Storage.Remotes",
+    "ArgName": "UpdateMousePos",
+    "UseOldSystem": false,
+    "NeedAimviewer": true,
+    "Adonis": false
+  },
+  "5602055394": {
+    "RemoteName": "MainRemote",
+    "RemoteParent": "ReplicatedStorage",
+    "ArgName": "MousePosDHM",
+    "UseOldSystem": false,
+    "NeedAimviewer": true,
+    "Adonis": false
+  },
+  "134531910435633": {
+    "RemoteName": "MAINEVENT",
+    "RemoteParent": "ReplicatedStorage",
+    "ArgName": "MOUSE",
+    "UseOldSystem": false,
+    "NeedAimviewer": false,
+    "Adonis": false
+  },
+  "96725866057460": {
+    "RemoteName": "MainEvent",
+    "RemoteParent": "ReplicatedStorage",
+    "ArgName": "UpdateMousePos",
+    "UseOldSystem": false,
+    "NeedAimviewer": true,
+    "Adonis": false
   }
 }

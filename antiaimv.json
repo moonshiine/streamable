@@ -142,5 +142,13 @@
     "UseOldSystem": false,
     "NeedAimviewer": true,
     "Adonis": false
+  },
+  "105788818579323": {
+    "RemoteName": "Remote",
+    "RemoteParent": "ReplicatedStorage",
+    "ArgName": "MDmJw",
+    "UseOldSystem": false,
+    "NeedAimviewer": false,
+    "Adonis": false
   }
 }

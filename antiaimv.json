@@ -143,6 +143,14 @@
     "NeedAimviewer": true,
     "Adonis": false
   },
+  "103647130693750": {
+    "RemoteName": "MainRemoteEvent",
+    "RemoteParent": "MainRemotes",
+    "ArgName": "ZEEHOODMOUSEPOSx3^3",
+    "UseOldSystem": false,
+    "NeedAimviewer": true,
+    "Adonis": false
+  },
   "105788818579323": {
     "RemoteName": "Remote",
     "RemoteParent": "ReplicatedStorage",

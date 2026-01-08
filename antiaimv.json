@@ -143,7 +143,7 @@
     "NeedAimviewer": true,
     "Adonis": false
   },
-  "103647130693750": {
+  "131323686651000": {
     "RemoteName": "MainRemoteEvent",
     "RemoteParent": "MainRemotes",
     "ArgName": "ZEEHOODMOUSEPOSx3^3",
@@ -158,5 +158,13 @@
     "UseOldSystem": false,
     "NeedAimviewer": false,
     "Adonis": false
+  },
+  "125528194028865": {
+    "RemoteName": "MainRemoteEvent",
+    "RemoteParent": "MainRemotes",
+    "ArgName": "D3RHooDMSOUEPoS233^+",
+    "UseOldSystem": true,
+    "NeedAimviewer": false,
+    "Adonis": true
   }
 }

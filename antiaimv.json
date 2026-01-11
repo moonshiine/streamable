@@ -1,5 +1,6 @@
 {
   "2788229376": {
+    "namegame": "Da Hood",
     "RemoteName": "MainEvent",
     "RemoteParent": "ReplicatedStorage",
     "ArgName": "UpdateMousePosI2",
@@ -8,6 +9,7 @@
     "Adonis": false
   },
   "7213786345": {
+    "namegame": "Da Hood vc",
     "RemoteName": "MainEvent",
     "RemoteParent": "ReplicatedStorage",
     "ArgName": "UpdateMousePosI2",
@@ -16,6 +18,7 @@
     "Adonis": false
   },
   "9825515356": {
+    "namegame": "Hood Customs",
     "RemoteName": "MainEvent",
     "RemoteParent": "MainEvent",
     "ArgName": "ReplicatedStorage",
@@ -24,6 +27,7 @@
     "Adonis": false
   },
   "138995385694035": {
+    "namegame": "Hood Customs ffa",
     "RemoteName": "MainEvent",
     "RemoteParent": "MainEvent",
     "ArgName": "ReplicatedStorage",
@@ -32,6 +36,7 @@
     "Adonis": false
   },
   "80567999110374": {
+    "namegame": "Hood Customs Anarchy",
     "RemoteName": "MainEvent",
     "RemoteParent": "MainEvent",
     "ArgName": "ReplicatedStorage",
@@ -40,6 +45,7 @@
     "Adonis": false
   },
   "75159825516372": {
+    "namegame": "Da Track",
     "RemoteName": "MainEvent",
     "RemoteParent": "ReplicatedStorage",
     "ArgName": "UpdateMousePosI2",
@@ -48,6 +54,7 @@
     "Adonis": false
   },
   "136445500005916": {
+    "namegame": "Da Bot Aim Trainer",
     "RemoteName": "MAINEVENT",
     "RemoteParent": "ReplicatedStorage",
     "ArgName": "MOUSE",
@@ -55,63 +62,8 @@
     "NeedAimviewer": false,
     "Adonis": false
   },
-  "131984654356230": {
-    "RemoteName": "MainEvent",
-    "RemoteParent": "ReplicatedStorage",
-    "ArgName": "UpdateMousePos",
-    "UseOldSystem": false,
-    "NeedAimviewer": true,
-    "Adonis": true
-  },
-  "73583590887289": {
-    "RemoteName": "MainEvent",
-    "RemoteParent": "ReplicatedStorage",
-    "ArgName": "UpdateMousePos",
-    "UseOldSystem": false,
-    "NeedAimviewer": false,
-    "Adonis": false
-  },
-  "123321059068622": {
-    "RemoteName": "MainRemoteEvent",
-    "RemoteParent": "MainRemotes",
-    "ArgName": "DEAHOODMOUSEPOSx3^3",
-    "UseOldSystem": false,
-    "NeedAimviewer": true,
-    "Adonis": true
-  },
-  "123425342248892": {
-    "RemoteName": "MainRemoteEvent",
-    "RemoteParent": "MainRemotes",
-    "ArgName": "D3RHooDMSOUEPoS233^+",
-    "UseOldSystem": false,
-    "NeedAimviewer": false,
-    "Adonis": true
-  },
-  "138388180823149": {
-    "RemoteName": "MainEvent",
-    "RemoteParent": "Replication.Communication.Remote Events",
-    "ArgName": "UpdateMousePos",
-    "UseOldSystem": false,
-    "NeedAimviewer": false,
-    "Adonis": true
-  },
-  "125011416059720": {
-    "RemoteName": "MainRemoteEvent",
-    "RemoteParent": "Remotes",
-    "ArgName": "Z3eHooDMSOUEPoS233^+",
-    "UseOldSystem": false,
-    "NeedAimviewer": true,
-    "Adonis": true
-  },
-  "108590068984015": {
-    "RemoteName": "MainRemoteEvent",
-    "RemoteParent": "MainRemotes",
-    "ArgName": "DEAHOODMOUSEPOSx3^3",
-    "UseOldSystem": true,
-    "NeedAimviewer": false,
-    "Adonis": true
-  },
   "89761652877122": {
+    "namegame": "Dah Aim Trainer",
     "RemoteName": "Unreliable",
     "RemoteParent": "ReplicatedStorage.Storage.Remotes",
     "ArgName": "UpdateMousePos",
@@ -120,6 +72,7 @@
     "Adonis": false
   },
   "5602055394": {
+    "namegame": "Hood Modded",
     "RemoteName": "MainRemote",
     "RemoteParent": "ReplicatedStorage",
     "ArgName": "MousePosDHM",
@@ -128,6 +81,7 @@
     "Adonis": false
   },
   "134531910435633": {
+    "namegame": "Da Strike",
     "RemoteName": "MAINEVENT",
     "RemoteParent": "ReplicatedStorage",
     "ArgName": "MOUSE",
@@ -136,6 +90,7 @@
     "Adonis": false
   },
   "96725866057460": {
+    "namegame": "das hood",
     "RemoteName": "MainEvent",
     "RemoteParent": "ReplicatedStorage",
     "ArgName": "UpdateMousePos",
@@ -143,28 +98,31 @@
     "NeedAimviewer": true,
     "Adonis": false
   },
-  "131323686651000": {
+  "128736428811511": {
+    "namegame": "zee hood",
     "RemoteName": "MainRemoteEvent",
-    "RemoteParent": "MainRemotes",
+    "RemoteParent": "ReplicatedStorage.MainRemotes",
     "ArgName": "ZEEHOODMOUSEPOSx3^3",
     "UseOldSystem": false,
     "NeedAimviewer": true,
     "Adonis": false
   },
+  "102243881512140": {
+    "namegame": "der hood",
+    "RemoteName": "MainRemoteEvent",
+    "RemoteParent": "ReplicatedStorage.MainRemotes",
+    "ArgName": "D3RHooDMSOUEPoS233^+",
+    "UseOldSystem": false,
+    "NeedAimviewer": false,
+    "Adonis": true
+  },
   "105788818579323": {
+    "namegame": "Dan ffa",
     "RemoteName": "Remote",
     "RemoteParent": "ReplicatedStorage",
     "ArgName": "MDmJw",
     "UseOldSystem": false,
     "NeedAimviewer": false,
     "Adonis": false
-  },
-  "125528194028865": {
-    "RemoteName": "MainRemoteEvent",
-    "RemoteParent": "MainRemotes",
-    "ArgName": "D3RHooDMSOUEPoS233^+",
-    "UseOldSystem": true,
-    "NeedAimviewer": false,
-    "Adonis": true
   }
 }

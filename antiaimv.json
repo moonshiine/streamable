@@ -124,5 +124,14 @@
     "UseOldSystem": false,
     "NeedAimviewer": false,
     "Adonis": false
+  },
+  "93283444799920": {
+    "namegame": "Da Uphill",
+    "RemoteName": "MAINEVENT",
+    "RemoteParent": "ReplicatedStorage",
+    "ArgName": "MOUSE",
+    "UseOldSystem": false,
+    "NeedAimviewer": false,
+    "Adonis": false
   }
 }

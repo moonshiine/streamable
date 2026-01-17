@@ -1,4 +1,4 @@
-
+--sgima
               local function ShowExecutorWarning()
     local Camera = workspace.CurrentCamera
     local ViewportSize = Camera.ViewportSize

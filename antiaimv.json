@@ -151,5 +151,14 @@
     "UseOldSystem": false,
     "NeedAimviewer": false,
     "Adonis": true
+  },
+  "80521603415583": {
+    "namegame": "flame hood",
+    "RemoteName": "UpdateAim",
+    "RemoteParent": "ReplicatedStorage.Packages.Knit.Services.ToolService.RE",
+    "ArgName": "",
+    "UseOldSystem": false,
+    "NeedAimviewer": false,
+    "Adonis": false
   }
 }

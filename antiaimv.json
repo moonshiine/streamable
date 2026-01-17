@@ -152,6 +152,15 @@
     "NeedAimviewer": false,
     "Adonis": true
   },
+  "142823291": {
+    "namegame": "mm2",
+    "RemoteName": "MainEvent",
+    "RemoteParent": "",
+    "ArgName": "",
+    "UseOldSystem": false,
+    "NeedAimviewer": false,
+    "Adonis": false
+  },
   "80521603415583": {
     "namegame": "flame hood",
     "RemoteName": "UpdateAim",

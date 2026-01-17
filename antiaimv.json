@@ -141,6 +141,15 @@
     "ArgName": "DEAHOODMOUSEPOSx3^3",
     "UseOldSystem": false,
     "NeedAimviewer": true,
+    "Adonis": false
+  },
+  "100432850987687": {
+    "namegame": "katana hood",
+    "RemoteName": "MainEvent",
+    "RemoteParent": "ReplicatedStorage.Replication.Communication.Remote Events",
+    "ArgName": "UpdateMousePos",
+    "UseOldSystem": false,
+    "NeedAimviewer": false,
     "Adonis": true
   }
 }

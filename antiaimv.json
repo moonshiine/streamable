@@ -170,6 +170,15 @@
     "NeedAimviewer": false,
     "Adonis": false
   },
+  "1093237560": {
+    "namegame": "Bot aim training",
+    "RemoteName": "",
+    "RemoteParent": "",
+    "ArgName": "",
+    "UseOldSystem": false,
+    "NeedAimviewer": false,
+    "Adonis": false
+  },
   "80521603415583": {
     "namegame": "flame hood",
     "RemoteName": "UpdateAim",

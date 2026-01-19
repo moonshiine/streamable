@@ -180,7 +180,16 @@
     "Adonis": false
   },
   "135856908115931": {
-    "namegame": "Bot aim training",
+    "namegame": "Murderers VS Sheriffs",
+    "RemoteName": "",
+    "RemoteParent": "",
+    "ArgName": "",
+    "UseOldSystem": false,
+    "NeedAimviewer": false,
+    "Adonis": false
+  },
+    "17516596118": {
+    "namegame": "hypershot ",
     "RemoteName": "",
     "RemoteParent": "",
     "ArgName": "",

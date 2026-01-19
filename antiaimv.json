@@ -189,7 +189,16 @@
     "Adonis": false
   },
     "17516596118": {
-    "namegame": "hypershot ",
+    "namegame": "hypershot",
+    "RemoteName": "",
+    "RemoteParent": "",
+    "ArgName": "",
+    "UseOldSystem": false,
+    "NeedAimviewer": false,
+    "Adonis": false
+  },
+  "86696142930150": {
+    "namegame": "hypershot2",
     "RemoteName": "",
     "RemoteParent": "",
     "ArgName": "",

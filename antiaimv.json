@@ -188,7 +188,7 @@
     "NeedAimviewer": false,
     "Adonis": false
   },
-    "17516596118": {
+  "17516596118": {
     "namegame": "hypershot",
     "RemoteName": "",
     "RemoteParent": "",
@@ -210,6 +210,78 @@
     "namegame": "flame hood",
     "RemoteName": "UpdateAim",
     "RemoteParent": "ReplicatedStorage.Packages.Knit.Services.ToolService.RE",
+    "ArgName": "",
+    "UseOldSystem": false,
+    "NeedAimviewer": false,
+    "Adonis": false
+  },
+  "97804379417079": {
+    "namegame": "hypershot",
+    "RemoteName": "",
+    "RemoteParent": "",
+    "ArgName": "",
+    "UseOldSystem": false,
+    "NeedAimviewer": false,
+    "Adonis": false
+  },
+  "134474332601640": {
+    "namegame": "hypershot",
+    "RemoteName": "",
+    "RemoteParent": "",
+    "ArgName": "",
+    "UseOldSystem": false,
+    "NeedAimviewer": false,
+    "Adonis": false
+  },
+  "108428559529058": {
+    "namegame": "hypershot",
+    "RemoteName": "",
+    "RemoteParent": "",
+    "ArgName": "",
+    "UseOldSystem": false,
+    "NeedAimviewer": false,
+    "Adonis": false
+  },
+  "103420430505525": {
+    "namegame": "hypershot",
+    "RemoteName": "",
+    "RemoteParent": "",
+    "ArgName": "",
+    "UseOldSystem": false,
+    "NeedAimviewer": false,
+    "Adonis": false
+  },
+  "122181485177067": {
+    "namegame": "hypershot",
+    "RemoteName": "",
+    "RemoteParent": "",
+    "ArgName": "",
+    "UseOldSystem": false,
+    "NeedAimviewer": false,
+    "Adonis": false
+  },
+  "131008473296170": {
+    "namegame": "hypershot",
+    "RemoteName": "",
+    "RemoteParent": "",
+    "ArgName": "",
+    "UseOldSystem": false,
+    "NeedAimviewer": false,
+    "Adonis": false
+  },
+  "100040622766961": {
+    "namegame": "hypershot",
+    "RemoteName": "",
+    "RemoteParent": "",
+    "ArgName": "",
+    "UseOldSystem": false,
+    "NeedAimviewer": false,
+    "Adonis": false
+  },
+  "92980558919575": {
+    "namegame": "hypershot",
+    "RemoteName": "",
+    "RemoteParent": "",
     "ArgName": "",
     "UseOldSystem": false,
     "NeedAimviewer": false,

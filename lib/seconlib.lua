@@ -117,7 +117,6 @@
         ["text_outline"] = rgb(0, 0, 0), 
         ["glow"] = rgb(70, 123, 141), 
     },
-}
 
 		utility = {
 			["outline"] = {

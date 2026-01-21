@@ -286,5 +286,14 @@
     "UseOldSystem": false,
     "NeedAimviewer": false,
     "Adonis": false
+  },
+  "126898502734157": {
+    "namegame": "xee hood",
+    "RemoteName": "MainRemoteEvent",
+    "RemoteParent": "ReplicatedStorage.MainRemotes",
+    "ArgName": "XEEHOODMOUSEPOSx3^3",
+    "UseOldSystem": false,
+    "NeedAimviewer": true,
+    "Adonis": true
   }
 }

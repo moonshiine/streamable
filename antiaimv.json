@@ -53,7 +53,7 @@
         "NeedAimviewer": false,
         "Adonis": false
     },
-    "136445500005916": {
+    "112820163742391": {
         "namegame": "Da Bot Aim Trainer",
         "RemoteName": "MAINEVENT",
         "RemoteParent": "ReplicatedStorage",
@@ -80,7 +80,7 @@
         "NeedAimviewer": true,
         "Adonis": false
     },
-    "134531910435633": {
+    "81959524124795": {
         "namegame": "Da Strike",
         "RemoteName": "MAINEVENT",
         "RemoteParent": "ReplicatedStorage",

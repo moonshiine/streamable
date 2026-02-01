@@ -71,6 +71,15 @@
     "NeedAimviewer": true,
     "Adonis": false
   },
+  "129034795308588": {
+    "namegame": "Dah Aim Trainer macro",
+    "RemoteName": "Unreliable",
+    "RemoteParent": "ReplicatedStorage.Storage.Remotes",
+    "ArgName": "UpdateMousePos",
+    "UseOldSystem": false,
+    "NeedAimviewer": true,
+    "Adonis": false
+  },
   "5602055394": {
     "namegame": "Hood Modded",
     "RemoteName": "MainRemote",
@@ -377,58 +386,13 @@
     "NeedAimviewer": true,
     "Adonis": true
   },
-  "17625359962": {
-    "namegame": "Rivals",
-    "RemoteName": "",
-    "RemoteParent": "",
-    "ArgName": "",
+  "135805844063648": {
+    "namegame": "BRAZILHOOD",
+    "RemoteName": "MainRemoteEvent",
+    "RemoteParent": "ReplicatedStorage.MainRemotes",
+    "ArgName": "BRAZILHOODMOUSEPOSx3^3",
     "UseOldSystem": false,
-    "NeedAimviewer": false,
-    "Adonis": false
-  },
-  "129604661913557": {
-    "namegame": "Rivals",
-    "RemoteName": "",
-    "RemoteParent": "",
-    "ArgName": "",
-    "UseOldSystem": false,
-    "NeedAimviewer": false,
-    "Adonis": false
-  },
-  "133215910299950": {
-    "namegame": "Rivals",
-    "RemoteName": "",
-    "RemoteParent": "",
-    "ArgName": "",
-    "UseOldSystem": false,
-    "NeedAimviewer": false,
-    "Adonis": false
-  },
-  "117398147513099": {
-    "namegame": "Rivals",
-    "RemoteName": "",
-    "RemoteParent": "",
-    "ArgName": "",
-    "UseOldSystem": false,
-    "NeedAimviewer": false,
-    "Adonis": false
-  },
-  "18126510175": {
-    "namegame": "Rivals",
-    "RemoteName": "",
-    "RemoteParent": "",
-    "ArgName": "",
-    "UseOldSystem": false,
-    "NeedAimviewer": false,
-    "Adonis": false
-  },
-  "71874690745115": {
-    "namegame": "Rivals",
-    "RemoteName": "",
-    "RemoteParent": "",
-    "ArgName": "",
-    "UseOldSystem": false,
-    "NeedAimviewer": false,
-    "Adonis": false
+    "NeedAimviewer": true,
+    "Adonis": true
   }
 }

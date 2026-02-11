@@ -386,6 +386,16 @@
     "NeedAimviewer": true,
     "Adonis": true
   },
+  "73285039277655": {
+  "namegame": "dee hood",
+  "RemoteName": "MainRemoteEvent",
+  "RemoteParent": "ReplicatedStorage.MainRemotes",
+  "ArgName": "DEEHOODMOUSEPOSx3^3",
+  "UseOldSystem": false,
+  "NeedAimviewer": true,
+  "Adonis": true
+}
+
   "135805844063648": {
     "namegame": "BRAZILHOOD",
     "RemoteName": "MainRemoteEvent",

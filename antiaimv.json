@@ -392,8 +392,8 @@
   "RemoteParent": "ReplicatedStorage.MainRemotes",
   "ArgName": "DEEHOODMOUSEPOSx3^3",
   "UseOldSystem": false,
-  "NeedAimviewer": true,
-  "Adonis": true
+  "NeedAimviewer": false,
+  "Adonis": false
 },
   "135805844063648": {
     "namegame": "BRAZILHOOD",

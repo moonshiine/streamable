@@ -143,6 +143,15 @@
     "NeedAimviewer": false,
     "Adonis": false
   },
+  "104836251742585": {
+    "namegame": "Da downhill",
+    "RemoteName": "MAINEVENT",
+    "RemoteParent": "ReplicatedStorage",
+    "ArgName": "MOUSE",
+    "UseOldSystem": false,
+    "NeedAimviewer": false,
+    "Adonis": false
+  },
   "118705717611562": {
     "namegame": "dea hood",
     "RemoteName": "MainRemoteEvent",

@@ -412,5 +412,23 @@
     "UseOldSystem": false,
     "NeedAimviewer": true,
     "Adonis": true
+  },
+   "130053079708673": {
+    "namegame": "yuu hood",
+    "RemoteName": "MainRemoteEvent",
+    "RemoteParent": "ReplicatedStorage",
+    "ArgName": "Z3eHooDMSOUEPoS233^+",
+    "UseOldSystem": false,
+    "NeedAimviewer": false,
+    "Adonis": true
+  },
+  "105735563010027": {
+    "namegame": "hood z",
+    "RemoteName": "MainEvent",
+    "RemoteParent": "ReplicatedStorage",
+    "ArgName": "UpdateMousePos",
+    "UseOldSystem": false,
+    "NeedAimviewer": true,
+    "Adonis": false
   }
 }

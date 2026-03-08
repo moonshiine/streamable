@@ -1,4 +1,4 @@
---hola 2
+--hola 3
 
     --[[
         Made by samet
@@ -4071,8 +4071,9 @@
                     AutomaticSize = Enum.AutomaticSize.Y,
                     AutomaticCanvasSize = Enum.AutomaticSize.Y,
                     ScrollBarImageColor3 = FromRGB(235, 157, 255),
-                    ScrollBarThickness = 1,
+                    ScrollBarThickness = 2,
                     Active = true,
+                    ClipsDescendants = true,
                     CanvasSize = UDim2New(0, 0, 0, 0),
                     BackgroundColor3 = FromRGB(20, 20, 25)
                 })  Items["OptionHolder"]:AddToTheme({BackgroundColor3 = "Inline", BorderColor3 = "Border", ScrollBarImageColor3 = "Accent"})

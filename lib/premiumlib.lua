@@ -1,4 +1,4 @@
---hola
+--hola 2
 
     --[[
         Made by samet
@@ -4060,7 +4060,7 @@
                     Name = "\0"
                 }):AddToTheme({Color = "Text Border"})
                 
-                Items["OptionHolder"] = Instances:Create("Frame", {
+                Items["OptionHolder"] = Instances:Create("ScrollingFrame", {
                     Parent = Items["Dropdown"].Instance,
                     Visible = false,
                     BorderColor3 = FromRGB(10, 10, 10),
@@ -4069,8 +4069,13 @@
                     Size = UDim2New(1, 0, 0, 0),
                     BorderSizePixel = 2,
                     AutomaticSize = Enum.AutomaticSize.Y,
+                    AutomaticCanvasSize = Enum.AutomaticSize.Y,
+                    ScrollBarImageColor3 = FromRGB(235, 157, 255),
+                    ScrollBarThickness = 1,
+                    Active = true,
+                    CanvasSize = UDim2New(0, 0, 0, 0),
                     BackgroundColor3 = FromRGB(20, 20, 25)
-                })  Items["OptionHolder"]:AddToTheme({BackgroundColor3 = "Inline", BorderColor3 = "Border"})
+                })  Items["OptionHolder"]:AddToTheme({BackgroundColor3 = "Inline", BorderColor3 = "Border", ScrollBarImageColor3 = "Accent"})
                 
                 Instances:Create("UIStroke", {
                     Parent = Items["OptionHolder"].Instance,
@@ -4084,6 +4089,11 @@
                     Parent = Items["OptionHolder"].Instance,
                     SortOrder = Enum.SortOrder.LayoutOrder
                 }) 
+
+                Instances:Create("UISizeConstraint", {
+                    Parent = Items["OptionHolder"].Instance,
+                    MaxSize = Vector2New(9999, 150)
+                })
                 
                 Instances:Create("UIPadding", {
                     Parent = Items["OptionHolder"].Instance,

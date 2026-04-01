@@ -413,13 +413,13 @@
     "NeedAimviewer": true,
     "Adonis": true
   },
-   "130053079708673": {
+   "76536162938369": {
     "namegame": "yuu hood",
     "RemoteName": "MainRemoteEvent",
-    "RemoteParent": "ReplicatedStorage",
-    "ArgName": "Z3eHooDMSOUEPoS233^+",
+    "RemoteParent": "ReplicatedStorage.Remotes",
+    "ArgName": "^+",
     "UseOldSystem": false,
-    "NeedAimviewer": false,
+    "NeedAimviewer": true,
     "Adonis": true
   },
   "105735563010027": {

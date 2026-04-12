@@ -89,7 +89,7 @@
     "NeedAimviewer": true,
     "Adonis": false
   },
-  "134628972153955": {
+  "137224456067108": {
     "namegame": "Da Strike",
     "RemoteName": "MAINEVENT",
     "RemoteParent": "ReplicatedStorage",
@@ -107,7 +107,7 @@
     "NeedAimviewer": true,
     "Adonis": false
   },
-  "90901462029533": {
+  "109944220030912": {
     "namegame": "zee hood",
     "RemoteName": "MainRemoteEvent",
     "RemoteParent": "ReplicatedStorage.MainRemotes",

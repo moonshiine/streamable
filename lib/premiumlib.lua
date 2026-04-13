@@ -1,4 +1,4 @@
---hola 3
+--hola
 
     --[[
         Made by samet
@@ -210,17 +210,17 @@
             Flags = { },
             
             Theme = {
-                ["Background"] = FromRGB(15, 15, 20),
-                ["Inline"] = FromRGB(20, 20, 25),
-                ["Page Background"] = FromRGB(30, 30, 35),
-                ["Border"] = FromRGB(10, 10, 10),
-                ["Outline"] = FromRGB(27, 27, 32),
-                ["Accent"] = FromRGB(235, 157, 255),
-                ["Element"] = FromRGB(33, 33, 36),
-                ["Hovered Element"] = FromRGB(40, 40, 43),
-                ["Text"] = FromRGB(215, 215, 215),
-                ["Text Border"] = FromRGB(0, 0, 0)
-            },
+            ["Background"] = FromRGB(15, 15, 15),
+            ["Inline"] = FromRGB(20, 20, 20),
+            ["Page Background"] = FromRGB(30, 30, 30),
+            ["Border"] = FromRGB(10, 10, 10),
+            ["Outline"] = FromRGB(27, 27, 27),
+            ["Accent"] = FromRGB(198, 154, 196),
+            ["Element"] = FromRGB(33, 33, 33),
+            ["Hovered Element"] = FromRGB(40, 40, 40),
+            ["Text"] = FromRGB(215, 215, 215),
+            ["Text Border"] = FromRGB(0, 0, 0)
+        },
 
             MenuKeybind = Enum.KeyCode.Z, 
 
@@ -263,7 +263,14 @@
             Font = nil,
             KeyList = nil,
 
-            CurrentColorpicker = nil
+            CurrentColorpicker = nil,
+            
+            -- [OPTIMIZATION] Centralized input handling - instead of 100+ InputChanged connections
+            _ActiveSliders = {},      -- Sliders currently being dragged
+            _ActiveColorpickers = {}, -- Colorpickers currently being dragged (palette/hue/alpha)
+            _ActiveDraggers = {},     -- Windows/elements being dragged
+            _ActiveResizers = {},     -- Elements being resized
+            _InputHandlerSetup = false
         }
 
         Library.__index = Library
@@ -512,7 +519,8 @@
 
                 local Gui = self.Instance
 
-                local Dragging = false 
+                -- [OPTIMIZATION] Use dragger object for centralized handler
+                local Dragger = { Dragging = false }
                 local DragStart
                 local StartPosition 
 
@@ -523,7 +531,7 @@
 
                 self:Connect("InputBegan", function(Input)
                     if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                        Dragging = true
+                        Dragger.Dragging = true
 
                         DragStart = Input.Position
                         StartPosition = Gui.Position
@@ -532,19 +540,14 @@
 
                 self:Connect("InputEnded", function(Input)
                     if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                        Dragging = false
+                        Dragger.Dragging = false
                     end
                 end)
 
-                Library:Connect(UserInputService.InputChanged, function(Input)
-                    if Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch then
-                        if Dragging then
-                            Set(Input)
-                        end
-                    end
-                end)
+                -- [OPTIMIZATION] Use centralized input handler
+                Library:RegisterDragger(Dragger, Set)
 
-                return Dragging
+                return Dragger.Dragging
             end
 
             Instances.MakeResizeable = function(self, Minimum, Maximum)
@@ -554,7 +557,8 @@
 
                 local Gui = self.Instance
 
-                local Resizing = false 
+                -- [OPTIMIZATION] Use resizer object for centralized handler
+                local Resizer = { Resizing = false }
                 local Start = UDim2New()
                 local Delta = UDim2New()
                 local ResizeMax = Gui.Parent.AbsoluteSize - Gui.AbsoluteSize
@@ -575,7 +579,7 @@
 
                 ResizeButton:Connect("InputBegan", function(Input)
                     if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                        Resizing = true
+                        Resizer.Resizing = true
 
                         Start = Gui.Size - UDim2New(0, Input.Position.X, 0, Input.Position.Y)
                     end
@@ -583,22 +587,21 @@
 
                 ResizeButton:Connect("InputEnded", function(Input)
                     if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                        Resizing = false
+                        Resizer.Resizing = false
                     end
                 end)
 
-                Library:Connect(UserInputService.InputChanged, function(Input)
-                    if Input.UserInputType == Enum.UserInputType.MouseMovement and Resizing then
-                        ResizeMax = Maximum or Gui.Parent.AbsoluteSize - Gui.AbsoluteSize
+                -- [OPTIMIZATION] Use centralized input handler
+                Library:RegisterResizer(Resizer, function(Input)
+                    ResizeMax = Maximum or Gui.Parent.AbsoluteSize - Gui.AbsoluteSize
 
-                        Delta = Start + UDim2New(0, Input.Position.X, 0, Input.Position.Y)
-                        Delta = UDim2New(0, math.clamp(Delta.X.Offset, Minimum.X, ResizeMax.X), 0, math.clamp(Delta.Y.Offset, Minimum.Y, ResizeMax.Y))
+                    Delta = Start + UDim2New(0, Input.Position.X, 0, Input.Position.Y)
+                    Delta = UDim2New(0, math.clamp(Delta.X.Offset, Minimum.X, ResizeMax.X), 0, math.clamp(Delta.Y.Offset, Minimum.Y, ResizeMax.Y))
 
-                        Tween:Create(Gui, TweenInfo.new(0.17, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = Delta}, true)
-                    end
+                    Tween:Create(Gui, TweenInfo.new(0.17, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = Delta}, true)
                 end)
 
-                return Resizing
+                return Resizer.Resizing
             end
 
             Instances.OnHover = function(self, Function)
@@ -731,12 +734,8 @@
         end
 
         Library.Unload = function(self)
-            for Index, Value in self.Connections do 
-                Value.Connection:Disconnect()
-            end
-
-            for Index, Value in self.Threads do 
-                coroutine.close(Value)
+            for _, Value in pairs(self.Connections) do 
+                if Value.Connection then Value.Connection:Disconnect() end
             end
 
             if self.Holder then 
@@ -747,21 +746,12 @@
             getgenv().Library = nil
         end
 
-        Library.Thread = function(self, Function)
-            local NewThread = coroutine.create(Function)
-            
-            coroutine.wrap(function()
-                coroutine.resume(NewThread)
-            end)()
-
-            TableInsert(self.Threads, NewThread)
-
-            return NewThread
+        Library.Thread = function(self, Function, ...)
+            return task.spawn(Function, ...)
         end
         
         Library.SafeCall = function(self, Function, ...)
-            local Arguements = { ... }
-            local Success, Result = pcall(Function, TableUnpack(Arguements))
+            local Success, Result = pcall(Function, ...)
 
             if not Success then
                 Library:Notification("Error caught in function, report this to the devs:\n"..Result, 5, FromRGB(255, 0, 0))
@@ -782,21 +772,90 @@
                 Connection = nil
             }
 
-            Library:Thread(function()
-                NewConnection.Connection = Event:Connect(Callback)
-            end)
+            NewConnection.Connection = Event:Connect(Callback)
 
-            TableInsert(self.Connections, NewConnection)
+            self.Connections[Name] = NewConnection
             return NewConnection
         end
 
         Library.Disconnect = function(self, Name)
-            for _, Connection in self.Connections do 
-                if Connection.Name == Name then
-                    Connection.Connection:Disconnect()
-                    break
-                end
+            local conn = self.Connections[Name]
+            if conn and conn.Connection then
+                conn.Connection:Disconnect()
+                self.Connections[Name] = nil
             end
+        end
+        
+        -- [OPTIMIZATION] Setup a single centralized InputChanged handler
+        -- This replaces 100+ individual connections with ONE connection
+        Library.SetupCentralInputHandler = function(self)
+            if self._InputHandlerSetup then return end
+            self._InputHandlerSetup = true
+            
+            -- Single InputChanged connection for ALL sliders, colorpickers, draggers, resizers
+            Library:Connect(UserInputService.InputChanged, function(Input)
+                if Input.UserInputType ~= Enum.UserInputType.MouseMovement and Input.UserInputType ~= Enum.UserInputType.Touch then
+                    return
+                end
+                
+                -- Handle active sliders (usually only 0-1 at a time)
+                for slider, callback in pairs(self._ActiveSliders) do
+                    if slider.Sliding then
+                        callback(Input)
+                    end
+                end
+                
+                -- Handle active colorpickers (palette/hue/alpha sliding)
+                for picker, callbacks in pairs(self._ActiveColorpickers) do
+                    if callbacks.palette and picker.SlidingPalette then
+                        callbacks.palette(Input)
+                    end
+                    if callbacks.hue and picker.SlidingHue then
+                        callbacks.hue(Input)
+                    end
+                    if callbacks.alpha and picker.SlidingAlpha then
+                        callbacks.alpha(Input)
+                    end
+                end
+                
+                -- Handle active draggers
+                for dragger, callback in pairs(self._ActiveDraggers) do
+                    if dragger.Dragging then
+                        callback(Input)
+                    end
+                end
+                
+                -- Handle active resizers
+                for resizer, callback in pairs(self._ActiveResizers) do
+                    if resizer.Resizing then
+                        callback(Input)
+                    end
+                end
+            end, "CentralInputHandler")
+        end
+        
+        -- Register a slider for centralized input handling
+        Library.RegisterSlider = function(self, slider, callback)
+            self:SetupCentralInputHandler()
+            self._ActiveSliders[slider] = callback
+        end
+        
+        -- Register a colorpicker for centralized input handling  
+        Library.RegisterColorpicker = function(self, picker, callbacks)
+            self:SetupCentralInputHandler()
+            self._ActiveColorpickers[picker] = callbacks
+        end
+        
+        -- Register a dragger for centralized input handling
+        Library.RegisterDragger = function(self, dragger, callback)
+            self:SetupCentralInputHandler()
+            self._ActiveDraggers[dragger] = callback
+        end
+        
+        -- Register a resizer for centralized input handling
+        Library.RegisterResizer = function(self, resizer, callback)
+            self:SetupCentralInputHandler()
+            self._ActiveResizers[resizer] = callback
         end
 
         Library.NextFlag = function(self)
@@ -820,6 +879,14 @@
 
             TableInsert(self.ThemeItems, ThemeData)
             self.ThemeMap[Item] = ThemeData
+
+            self.ThemeIndex = self.ThemeIndex or {}
+            for Property, Value in pairs(Properties) do
+                if type(Value) == "string" then
+                    self.ThemeIndex[Value] = self.ThemeIndex[Value] or {}
+                    table.insert(self.ThemeIndex[Value], { Item = Item, Property = Property })
+                end
+            end
         end
 
         Library.GetConfig = function(self)
@@ -919,13 +986,8 @@
 
         Library.ChangeTheme = function(self, Theme, Color)
             self.Theme[Theme] = Color
-
-            for _, Item in self.ThemeItems do
-                for Property, Value in Item.Properties do
-                    if type(Value) == "string" and Value == Theme then
-                        Item.Item[Property] = Color
-                    end
-                end
+            for _, entry in ipairs(self.ThemeIndex and self.ThemeIndex[Theme] or {}) do
+                if entry.Item then entry.Item[entry.Property] = Color end
             end
         end
 
@@ -1106,7 +1168,8 @@
 
             Items["Notification"].Instance.BackgroundTransparency = 1
             Items["Notification"].Instance.Size = UDim2New(0, 0, 0, 0)
-            for Index, Value in Items["Notification"].Instance:GetDescendants() do
+            local notificationDescendants = Items["Notification"].Instance:GetDescendants()
+            for Index, Value in pairs(notificationDescendants) do
                 if Value:IsA("UIStroke") then 
                     Value.Transparency = 1
                 elseif Value:IsA("TextLabel") then 
@@ -1123,7 +1186,7 @@
                 
                 task.wait(0.06)
 
-                for Index, Value in Items["Notification"].Instance:GetDescendants() do
+                for Index, Value in pairs(notificationDescendants) do
                     if Value:IsA("UIStroke") then
                         Tween:Create(Value, nil, {Transparency = 0}, true)
                     elseif Value:IsA("TextLabel") then
@@ -1136,7 +1199,7 @@
                 end
 
                 task.delay(Duration + 0.1, function()
-                    for Index, Value in Items["Notification"].Instance:GetDescendants() do
+                    for Index, Value in pairs(notificationDescendants) do
                         if Value:IsA("UIStroke") then
                             Tween:Create(Value, nil, {Transparency = 1}, true)
                         elseif Value:IsA("TextLabel") then
@@ -1596,9 +1659,11 @@
                 }):AddToTheme({Color = "Outline"})
             end
 
-            local SlidingPalette = false
-            local SlidingHue = false
-            local SlidingAlpha = false
+            -- [OPTIMIZATION] Use object properties instead of local vars for centralized handler
+            Colorpicker.SlidingPalette = false
+            Colorpicker.SlidingHue = false
+            Colorpicker.SlidingAlpha = false
+            local SlidingPalette, SlidingHue, SlidingAlpha -- Keep locals for backward compat
 
             local Debounce = false
 
@@ -1698,11 +1763,11 @@
 
                 Items["AlphaDragger"]:Tween(TweenInfo.new(0.17, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = UDim2New(AlphaPositionX, 0, 0, 0)})
 
-                self:Update()
+                self:Update(false, self.Color)
             end
 
-            function Colorpicker:Update(IsFromAlpha)
-                self.Color = FromHSV(self.Hue, self.Saturation, self.Value)
+            function Colorpicker:Update(IsFromAlpha, precomputedColor)
+                    self.Color = precomputedColor or FromHSV(self.Hue, self.Saturation, self.Value)
                 self.HexValue = self.Color:ToHex()
 
                 Library.Flags[Data.Flag] = {
@@ -1778,6 +1843,7 @@
             Items["Palette"]:Connect("InputBegan", function(Input)
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 then
                     SlidingPalette = true
+                    Colorpicker.SlidingPalette = true -- [OPTIMIZATION] for centralized handler
                     Colorpicker:SlidePalette(Input)
                 end
             end)
@@ -1785,12 +1851,14 @@
             Items["Palette"]:Connect("InputEnded", function(Input)
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 then
                     SlidingPalette = false
+                    Colorpicker.SlidingPalette = false
                 end
             end)
 
             Items["Hue"]:Connect("InputBegan", function(Input)
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 then
                     SlidingHue = true
+                    Colorpicker.SlidingHue = true
                     Colorpicker:SlideHue(Input)
                 end
             end)
@@ -1798,12 +1866,14 @@
             Items["Hue"]:Connect("InputEnded", function(Input)
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 then
                     SlidingHue = false
+                    Colorpicker.SlidingHue = false
                 end
             end)
 
             Items["Alpha"]:Connect("InputBegan", function(Input)
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 then
                     SlidingAlpha = true
+                    Colorpicker.SlidingAlpha = true
                     Colorpicker:SlideAlpha(Input)
                 end
             end)
@@ -1811,24 +1881,16 @@
             Items["Alpha"]:Connect("InputEnded", function(Input)
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 then
                     SlidingAlpha = false
+                    Colorpicker.SlidingAlpha = false
                 end
             end)
 
-            Library:Connect(UserInputService.InputChanged, function(Input)
-                if Input.UserInputType == Enum.UserInputType.MouseMovement then
-                    if SlidingPalette then
-                        Colorpicker:SlidePalette(Input)
-                    end
-
-                    if SlidingHue then
-                        Colorpicker:SlideHue(Input)
-                    end
-
-                    if SlidingAlpha then
-                        Colorpicker:SlideAlpha(Input)
-                    end
-                end
-            end)
+            -- [OPTIMIZATION] Use centralized input handler instead of individual connection
+            Library:RegisterColorpicker(Colorpicker, {
+                palette = function(Input) Colorpicker:SlidePalette(Input) end,
+                hue = function(Input) Colorpicker:SlideHue(Input) end,
+                alpha = function(Input) Colorpicker:SlideAlpha(Input) end
+            })
 
             Library:Connect(UserInputService.InputBegan, function(Input)
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -2279,7 +2341,7 @@
 
             local Window = {
                 Name = Data.Name or Data.name or "Window",
-                Size = Data.Size or Data.size or UDim2New(0, 500, 0, 600),
+                Size = Data.Size or Data.size or UDim2New(0, 615, 0, 639),
 
                 FadeSpeed = Data.FadeSpeed or Data.fadespeed or 0.25,
 
@@ -3914,15 +3976,12 @@
                 end
             end)
 
-            Library:Connect(UserInputService.InputChanged, function(Input)
-                if Input.UserInputType == Enum.UserInputType.MouseMovement and Slider.Sliding then
-                    local MousePos = UserInputService:GetMouseLocation()
-
-                    local SizeX = (MousePos.X - Items["RealSlider"].Instance.AbsolutePosition.X) / Items["RealSlider"].Instance.AbsoluteSize.X
-                    local Value = ((Slider.Max - Slider.Min) * SizeX) + Slider.Min
-
-                    Slider:Set(Value)
-                end
+            -- [OPTIMIZATION] Use centralized input handler instead of individual connection
+            Library:RegisterSlider(Slider, function(Input)
+                local MousePos = UserInputService:GetMouseLocation()
+                local SizeX = (MousePos.X - Items["RealSlider"].Instance.AbsolutePosition.X) / Items["RealSlider"].Instance.AbsoluteSize.X
+                local Value = ((Slider.Max - Slider.Min) * SizeX) + Slider.Min
+                Slider:Set(Value)
             end)
 
             if Slider.Default then
@@ -4069,7 +4128,6 @@
                     Size = UDim2New(1, 0, 0, 0),
                     BorderSizePixel = 2,
                     AutomaticSize = Enum.AutomaticSize.Y,
-                    AutomaticCanvasSize = Enum.AutomaticSize.Y,
                     ScrollBarImageColor3 = FromRGB(235, 157, 255),
                     ScrollBarThickness = 2,
                     Active = true,
@@ -4086,10 +4144,15 @@
                     Color = FromRGB(27, 27, 32)
                 }):AddToTheme({Color = "Outline"})
 
-                Instances:Create("UIListLayout", {
+                local listLayout = Instances:Create("UIListLayout", {
                     Parent = Items["OptionHolder"].Instance,
                     SortOrder = Enum.SortOrder.LayoutOrder
-                }) 
+                })
+
+                Library:Connect(listLayout.Instance:GetPropertyChangedSignal("AbsoluteContentSize"), function()
+                    Items["OptionHolder"].Instance.CanvasSize = UDim2New(0, 0, 0, listLayout.Instance.AbsoluteContentSize.Y + 2)
+                end)
+
 
                 Instances:Create("UISizeConstraint", {
                     Parent = Items["OptionHolder"].Instance,

@@ -422,6 +422,15 @@
     "NeedAimviewer": true,
     "Adonis": true
   },
+  "90987363001381": {
+    "namegame": "pain hood",
+    "RemoteName": "MainRemoteEvent",
+    "RemoteParent": "ReplicatedStorage.MainRemotes",
+    "ArgName": "DurrHooDmOsussePosition144125+*-",
+    "UseOldSystem": false,
+    "NeedAimviewer": true,
+    "Adonis": true
+  },
   "105735563010027": {
     "namegame": "hood z",
     "RemoteName": "MainEvent",

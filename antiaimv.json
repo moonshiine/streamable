@@ -152,10 +152,10 @@
     "NeedAimviewer": false,
     "Adonis": false
   },
-  "110753873913806": {
+  "92791736899057": {
     "namegame": "dea hood",
     "RemoteName": "MainRemoteEvent",
-    "RemoteParent": "ReplicatedStorage.MainRemotes",
+    "RemoteParent": "ReplicatedStorage.Remotes",
     "ArgName": "DEAHOODMOUSEPOSx3^3",
     "UseOldSystem": false,
     "NeedAimviewer": true,

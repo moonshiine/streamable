@@ -1,5 +1,5 @@
---hola 333
-
+--hola
+--tysm cp7
     --[[
         Made by samet
     --Yep, if you're reading this, it's just the gui library, and before you complain or anything, it was already leaked!
@@ -193,6 +193,8 @@
         local StringFind = string.find
         local StringGSub = string.gsub
 
+        
+
         local function SafeGetCustomAsset(path)
             if not isfile(path) then
                 warn("Asset not found: " .. tostring(path))
@@ -363,11 +365,31 @@
             ["RightAlt"]          = "RightAlt"
         }
 
-        -- Files 
+        -- Files
         for _, FileName in Library.Folders do
             if not isfolder(FileName) then
                 makefolder(FileName)
             end
+        end
+
+        -- Download drag image for drag ghost (only if not already in workspace)
+        if not isfile("1.webp") then
+            local success = pcall(function()
+                local encoded = game:HttpGet("https://raw.githubusercontent.com/moonshiine/streamable/main/img/1")
+                writefile("1.webp", base64decode(encoded))
+            end)
+        end
+        if not isfile("2.webp") then
+            pcall(function()
+                local encoded = game:HttpGet("https://raw.githubusercontent.com/moonshiine/streamable/refs/heads/main/img/2")
+                writefile("2.webp", base64decode(encoded))
+            end)
+        end
+        if not isfile("3.webp") then
+            pcall(function()
+                local encoded = game:HttpGet("https://raw.githubusercontent.com/moonshiine/streamable/refs/heads/main/img/3")
+                writefile("3.webp", base64decode(encoded))
+            end)
         end
 
         for _, ImageData in Library.Images do
@@ -837,8 +859,49 @@
                                 BackgroundColor3 = Gui.BackgroundColor3 or Library.Theme.Background,
                                 BackgroundTransparency = 0.15,
                                 BorderSizePixel = 0,
-                                ZIndex = 10000
+                                ZIndex = 10000 -- Ghost debajo de la imagen
                             })
+                            
+                            -- Add drag image overlay
+                            local DragImage = Instances:Create("ImageLabel", {
+                                Parent = DragGhost.Instance,
+                                Name = "DragImage",
+                                Size = UDim2.new(1, 0, 1, 0),
+                                Position = UDim2.new(0, 0, 0, 0),
+                                BackgroundTransparency = 1,
+                                BorderSizePixel = 0,
+                                ZIndex = 10001, -- Imagen siempre encima del ghost
+                                ScaleType = Enum.ScaleType.Stretch,
+                                ImageTransparency = 0.75,
+                                Image = ""
+                            })
+                            
+                            -- Try to load custom asset for drag image
+                            local success, result = pcall(function()
+                                if getcustomasset then
+                                    local rand = math.random()
+                                    local imgFile
+                                    if rand < 0.10 and isfile("2.webp") then
+                                        imgFile = "2.webp"
+                                    elseif rand < 0.18 and isfile("3.webp") then
+                                        imgFile = "3.webp"
+                                    elseif isfile("1.webp") then
+                                        imgFile = "1.webp"
+                                    end
+                                    if imgFile then
+                                        local asset = getcustomasset(imgFile)
+                                        if asset then
+                                            DragImage.Instance.Image = asset
+                                        end
+                                    end
+                                end
+                            end)
+                            
+                            -- Fallback: show a simple icon if no custom asset
+                            if not success or not DragImage.Instance.Image or DragImage.Instance.Image == "" then
+                                DragImage.Instance.Image = "rbxasset://textures/ui/Controls/pointer.png"
+                            end
+                            
                             Dragger._Ghost = DragGhost
                         end
 
@@ -2640,7 +2703,7 @@
             function Keybind:SetOpen(Bool)
                 Keybind.IsOpen = Bool
 
-                if Bool then 
+                if Bool then
                     Debounce = true
                     Items["Window"].Instance.Visible = true
                     Items["Window"].Instance.ZIndex = 16
@@ -2648,12 +2711,14 @@
 
                     task.wait(0.1)
 
-                    for _, wrapper in pairs(Items) do
+                    -- Only affect menu window elements, not the keybind text
+                    for Index, wrapper in pairs(Items) do
+                        if Index == "Text" or Index == "KeyButton" then continue end
+                        
                         local Value = (wrapper and wrapper.Instance) or wrapper
                         if not Value then continue end
                         if Value:IsA("TextButton") or Value:IsA("TextLabel") then
                             if Value:IsA("TextButton") then
-                                -- immediate change while opening to avoid many tweens
                                 Value.TextTransparency = 0
                                 Value.ZIndex = 16
                             else
@@ -2661,8 +2726,11 @@
                             end
                         end
                     end
-                else 
-                    for _, wrapper in pairs(Items) do
+                else
+                    -- Only affect menu window elements, not the keybind text
+                    for Index, wrapper in pairs(Items) do
+                        if Index == "Text" or Index == "KeyButton" then continue end
+                        
                         local Value = (wrapper and wrapper.Instance) or wrapper
                         if not Value then continue end
                         if Value:IsA("TextButton") or Value:IsA("TextLabel") then
@@ -2853,7 +2921,8 @@
                     end
                 end
 
-                if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.MouseButton2 then
+                -- Only MouseButton1 should be able to close the menu
+                if Input.UserInputType == Enum.UserInputType.MouseButton1 then
                     if not Keybind.IsOpen then return end
 
                     -- If clicking on the keybind button itself, don't close the menu
@@ -4972,47 +5041,69 @@
             local Debounce = false
 
             function Dropdown:SetOpen(Bool)
-                if Debounce then 
-                    return 
+                if Debounce then
+                    return
                 end
 
                 Dropdown.IsOpen = Bool
 
-                Debounce = true 
+                Debounce = true
 
-                if Bool then 
+                if Bool then
                     Items["OptionHolder"].Instance.Visible = true
                     Items["OptionHolder"].Instance.ZIndex = 15
                     Items["Open"].Instance.Text = "-"
                     Items["Open"].Instance.Position = UDim2New(0, -5, 0, -1)
+                    
+                    -- Also update ZIndex for all children of OptionHolder
+                    for _, child in ipairs(Items["OptionHolder"].Instance:GetDescendants()) do
+                        -- Skip UI objects that don't have ZIndex property
+                        local success = pcall(function()
+                            child.ZIndex = 15
+                        end)
+                    end
                 else
                     Items["Open"].Instance.Text = "+"
                     Items["Open"].Instance.Position = UDim2New(0, -4, 0, -1)
+                    
+                    -- Also update ZIndex for all children of OptionHolder when closing
+                    for _, child in ipairs(Items["OptionHolder"].Instance:GetDescendants()) do
+                        local success = pcall(function()
+                            child.ZIndex = 1
+                        end)
+                    end
                 end
 
                 -- iterate known Items to avoid traversing whole descendant tree
                 local Descendants = {}
-                for _, wrapper in pairs(Items) do
+                for Index, wrapper in pairs(Items) do
+                    -- Skip OptionHolder from fade animation but set its ZIndex
+                    if Index == "OptionHolder" then
+                        if wrapper and wrapper.Instance then
+                            wrapper.Instance.ZIndex = Bool and 15 or 1
+                        end
+                        continue
+                    end
+                    
                     if wrapper and wrapper.Instance then
                         TableInsert(Descendants, wrapper.Instance)
                     end
                 end
-                TableInsert(Descendants, Items["OptionHolder"].Instance)
 
                 local NewTween
-                for Index, Value in ipairs(Descendants) do 
+                for Index, Value in ipairs(Descendants) do
                     local ValueIndex = Library:GetTransparencyPropertyFromItem(Value)
 
-                    if not ValueIndex then 
+                    if not ValueIndex then
                         continue
                     end
 
-                    if not StringFind(Value.ClassName, "UI") then 
+                    if not StringFind(Value.ClassName, "UI") then
                         Value.ZIndex = Bool and 15 or 1
                     end
 
                     if type(ValueIndex) == "table" then
-                        for _, Property in ValueIndex do 
+                        for _, Property in ValueIndex do
                             NewTween = Library:FadeItem(Value, Property, Bool, Dropdown.Window.FadeSpeed)
                         end
                     else
@@ -5027,6 +5118,13 @@
                         Debounce = false
                         Items["OptionHolder"].Instance.Visible = Bool
                         Items["OptionHolder"].Instance.ZIndex = Bool and 15 or 1
+                        
+                        -- Update ZIndex for all children of OptionHolder
+                        for _, child in ipairs(Items["OptionHolder"].Instance:GetDescendants()) do
+                            pcall(function()
+                                child.ZIndex = Bool and 15 or 1
+                            end)
+                        end
                     end, connName)
                 else
                     Debounce = false

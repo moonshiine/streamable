@@ -1,4 +1,4 @@
---hola 67
+--hola
 
     --[[
         Made by samet
@@ -2839,10 +2839,18 @@
 
             local kbBeginName = "Keybind_Begin_" .. (Data.Flag or HttpService:GenerateGUID(false))
             Library:Connect(UserInputService.InputBegan, function(Input)
-                if tostring(Input.KeyCode) == Keybind.Key or tostring(Input.UserInputType) == Keybind.Key then
-                    if Keybind.Mode == "Toggle" then 
+                -- Check if input matches the keybind (handles both KeyCode and UserInputType)
+                local inputMatches = false
+                if Input.KeyCode ~= Enum.KeyCode.Unknown then
+                    inputMatches = tostring(Input.KeyCode) == Keybind.Key
+                else
+                    inputMatches = tostring(Input.UserInputType) == Keybind.Key
+                end
+                
+                if inputMatches then
+                    if Keybind.Mode == "Toggle" then
                         Keybind:Press()
-                    elseif Keybind.Mode == "Hold" then 
+                    elseif Keybind.Mode == "Hold" then
                         Keybind:Press(true)
                     end
                 end
@@ -2864,8 +2872,16 @@
 
             local kbEndName = "Keybind_End_" .. (Data.Flag or HttpService:GenerateGUID(false))
             Library:Connect(UserInputService.InputEnded, function(Input)
-                if tostring(Input.KeyCode) == Keybind.Key or tostring(Input.UserInputType) == Keybind.Key then
-                    if Keybind.Mode == "Hold" then 
+                -- Check if input matches the keybind (handles both KeyCode and UserInputType)
+                local inputMatches = false
+                if Input.KeyCode ~= Enum.KeyCode.Unknown then
+                    inputMatches = tostring(Input.KeyCode) == Keybind.Key
+                else
+                    inputMatches = tostring(Input.UserInputType) == Keybind.Key
+                end
+                
+                if inputMatches then
+                    if Keybind.Mode == "Hold" then
                         Keybind:Press(false)
                     end
                 end
@@ -3046,7 +3062,15 @@
 
             local menuConnName = "Window_MenuKeybind_" .. HttpService:GenerateGUID(false)
             Library:Connect(UserInputService.InputBegan, function(Input)
-                if tostring(Input.KeyCode) == Library.MenuKeybind or tostring(Input.UserInputType) == Library.MenuKeybind then
+                -- Check if input matches the menu keybind (handles both KeyCode and UserInputType)
+                local inputMatches = false
+                if Input.KeyCode ~= Enum.KeyCode.Unknown then
+                    inputMatches = tostring(Input.KeyCode) == Library.MenuKeybind
+                else
+                    inputMatches = tostring(Input.UserInputType) == Library.MenuKeybind
+                end
+                
+                if inputMatches then
                     Window:SetOpen(not Window.IsOpen)
                 end
             end, menuConnName)

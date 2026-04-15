@@ -1,4 +1,4 @@
---hola
+--hola 333
 
     --[[
         Made by samet
@@ -2808,14 +2808,12 @@
 
                 Library:Connect(UserInputService.InputBegan, function(Input)
                     if pickTimeout then task.cancel(pickTimeout) end
-                    if Input.UserInputType == Enum.UserInputType.Keyboard then 
+                    -- Only accept keyboard inputs, reject mouse buttons
+                    if Input.UserInputType == Enum.UserInputType.Keyboard then
                         Keybind:Set(Input.KeyCode)
-                    else
-                        Keybind:Set(Input.UserInputType)
+                        Library:Disconnect(pickConnName)
+                        pickConnName = nil
                     end
-
-                    Library:Disconnect(pickConnName)
-                    pickConnName = nil
                 end, pickConnName)
 
                 pickTimeout = task.delay(15, function()
@@ -2855,14 +2853,20 @@
                     end
                 end
 
-                if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+                if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.MouseButton2 then
                     if not Keybind.IsOpen then return end
 
+                    -- If clicking on the keybind button itself, don't close the menu
+                    if Library:IsMouseOverFrame(Items["KeyButton"]) then
+                        return
+                    end
+
+                    -- If clicking inside the options window, don't close it
                     if Library:IsMouseOverFrame(Items["Window"]) then
                         return
                     end
 
-                    if Debounce then 
+                    if Debounce then
                         return
                     end
 

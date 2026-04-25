@@ -107,11 +107,20 @@
     "NeedAimviewer": true,
     "Adonis": false
   },
-  "109944220030912": {
+  "79220076098580": {
     "namegame": "zee hood",
     "RemoteName": "MainRemoteEvent",
-    "RemoteParent": "ReplicatedStorage.Remotes",
-    "ArgName": "ZEEHOODMOUSEPOSx3^3",
+    "RemoteParent": "ReplicatedStorage.MainRemotes",
+    "ArgName": "XEEHOODMOUSEPOSx3^3",
+    "UseOldSystem": false,
+    "NeedAimviewer": true,
+    "Adonis": true
+  },
+  "138453302304641": {
+    "namegame": "zee hood 2",
+    "RemoteName": "MainRemoteEvent",
+    "RemoteParent": "ReplicatedStorage.MainRemotes",
+    "ArgName": "XEEHOODMOUSEPOSx3^3",
     "UseOldSystem": false,
     "NeedAimviewer": true,
     "Adonis": true

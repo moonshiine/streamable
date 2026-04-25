@@ -110,11 +110,11 @@
   "109944220030912": {
     "namegame": "zee hood",
     "RemoteName": "MainRemoteEvent",
-    "RemoteParent": "ReplicatedStorage.MainRemotes",
+    "RemoteParent": "ReplicatedStorage.Remotes",
     "ArgName": "ZEEHOODMOUSEPOSx3^3",
     "UseOldSystem": false,
     "NeedAimviewer": true,
-    "Adonis": false
+    "Adonis": true
   },
   "79900851769492": {
     "namegame": "der hood",

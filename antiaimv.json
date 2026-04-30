@@ -96,7 +96,7 @@
     "ArgName": "MOUSE",
     "UseOldSystem": false,
     "NeedAimviewer": false,
-    "Adonis": false
+    "Adonis": true
   },
   "85571964739472": {
     "namegame": "das hood",

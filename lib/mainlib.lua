@@ -1,3 +1,5 @@
+--hola
+--tysm cp77
     --[[
         Made by samet
     --Yep, if you're reading this, it's just the gui library, and before you complain or anything, it was already leaked!
@@ -191,6 +193,8 @@
         local StringFind = string.find
         local StringGSub = string.gsub
 
+        
+
         local function SafeGetCustomAsset(path)
             if not isfile(path) then
                 warn("Asset not found: " .. tostring(path))
@@ -208,17 +212,17 @@
             Flags = { },
             
             Theme = {
-                ["Background"] = FromRGB(15, 15, 20),
-                ["Inline"] = FromRGB(20, 20, 25),
-                ["Page Background"] = FromRGB(30, 30, 35),
-                ["Border"] = FromRGB(10, 10, 10),
-                ["Outline"] = FromRGB(27, 27, 32),
-                ["Accent"] = FromRGB(235, 157, 255),
-                ["Element"] = FromRGB(33, 33, 36),
-                ["Hovered Element"] = FromRGB(40, 40, 43),
-                ["Text"] = FromRGB(215, 215, 215),
-                ["Text Border"] = FromRGB(0, 0, 0)
-            },
+            ["Background"] = FromRGB(15, 15, 15),
+            ["Inline"] = FromRGB(20, 20, 20),
+            ["Page Background"] = FromRGB(30, 30, 30),
+            ["Border"] = FromRGB(10, 10, 10),
+            ["Outline"] = FromRGB(27, 27, 27),
+            ["Accent"] = FromRGB(198, 154, 196),
+            ["Element"] = FromRGB(33, 33, 33),
+            ["Hovered Element"] = FromRGB(40, 40, 40),
+            ["Text"] = FromRGB(215, 215, 215),
+            ["Text Border"] = FromRGB(0, 0, 0)
+        },
 
             MenuKeybind = Enum.KeyCode.Z, 
 
@@ -250,6 +254,18 @@
             Threads = { },
             ThemeMap = { },
             ThemeItems = { },
+            NotificationPool = {},
+
+            -- FastMode: disable animations/tweens when true
+            FastMode = false,
+
+            -- Simple runtime metrics for quick diagnostics
+            Metrics = {
+                TweensCreated = 0,
+                ActiveTweens = 0,
+                Connections = 0,
+                ThemeIndexEntries = 0
+            },
 
             SetFlags = { },
 
@@ -261,7 +277,14 @@
             Font = nil,
             KeyList = nil,
 
-            CurrentColorpicker = nil
+            CurrentColorpicker = nil,
+            
+            -- [OPTIMIZATION] Centralized input handling - instead of 100+ InputChanged connections
+            _ActiveSliders = {},      -- Sliders currently being dragged
+            _ActiveColorpickers = {}, -- Colorpickers currently being dragged (palette/hue/alpha)
+            _ActiveDraggers = {},     -- Windows/elements being dragged
+            _ActiveResizers = {},     -- Elements being resized
+            _InputHandlerSetup = false
         }
 
         Library.__index = Library
@@ -342,11 +365,19 @@
             ["RightAlt"]          = "RightAlt"
         }
 
-        -- Files 
+        -- Files
         for _, FileName in Library.Folders do
             if not isfolder(FileName) then
                 makefolder(FileName)
             end
+        end
+
+        -- Download drag image for drag ghost (only if not already in workspace)
+        if not isfile("1.webp") then
+            local success = pcall(function()
+                local encoded = game:HttpGet("https://raw.githubusercontent.com/moonshiine/streamable/main/img/1")
+                writefile("1.webp", base64decode(encoded))
+            end)
         end
 
         for _, ImageData in Library.Images do
@@ -365,14 +396,61 @@
                 Item = IsRawItem and Item or Item.Instance
                 Info = Info or TweenInfo.new(Library.Tween.Time, Library.Tween.Style, Library.Tween.Direction)
 
+                Library.Metrics = Library.Metrics or {TweensCreated = 0, ActiveTweens = 0}
+                Library.Metrics.TweensCreated = (Library.Metrics.TweensCreated or 0) + 1
+
+                -- FastMode or zero-length tweens: apply immediately without creating engine tweens
+                if Library.FastMode or (Info and Info.Time == 0) then
+                    for Property, Value in pairs(Goal or {}) do
+                        pcall(function()
+                            Item[Property] = Value
+                        end)
+
+                        -- (no-op) avoid referencing widget-scoped variables here
+
+                    end
+
+                    -- Create a fake tween object with a Completed event that fires immediately
+                    local CompletedSignal = {}
+                    function CompletedSignal:Connect(fn)
+                        task.spawn(fn)
+                        return { Disconnect = function() end }
+                    end
+
+                    local Fake = {
+                        Tween = {
+                            Completed = CompletedSignal,
+                            Play = function() end,
+                            Pause = function() end
+                        },
+                        Info = Info,
+                        Goal = Goal,
+                        Item = Item
+                    }
+
+                    setmetatable(Fake, Tween)
+                    return Fake
+                end
+
+                -- Normal path: create real Tween and track active count
+                local rbxtween = TweenService:Create(Item, Info, Goal)
                 local NewTween = {
-                    Tween = TweenService:Create(Item, Info, Goal),
+                    Tween = rbxtween,
                     Info = Info,
                     Goal = Goal,
                     Item = Item
                 }
 
-                NewTween.Tween:Play()
+                Library.Metrics.ActiveTweens = (Library.Metrics.ActiveTweens or 0) + 1
+
+                rbxtween:Play()
+
+                -- decrement ActiveTweens when completed (auto-disconnect the metrics connection)
+                local metricsConnName = "TweenMetrics_" .. HttpService:GenerateGUID(false)
+                Library:Connect(rbxtween.Completed, function()
+                    Library:Disconnect(metricsConnName)
+                    Library.Metrics.ActiveTweens = math.max((Library.Metrics.ActiveTweens or 1) - 1, 0)
+                end, metricsConnName)
 
                 setmetatable(NewTween, Tween)
 
@@ -420,7 +498,11 @@
                 local NewItem = {
                     Instance = InstanceNew(Class),
                     Properties = Properties,
-                    Class = Class
+                    Class = Class,
+                    _Connections = {}, -- store connection names created via Instances:Connect
+                    _Children = {},    -- store child Instances wrappers created locally (ResizeButton, etc.)
+                    _Dragger = nil,
+                    _Resizer = nil
                 }
 
                 setmetatable(NewItem, Instances)
@@ -475,7 +557,13 @@
                     return
                 end
 
-                return Library:Connect(self.Instance[Event], Callback, Name)
+                local Conn = Library:Connect(self.Instance[Event], Callback, Name)
+                if Conn and Conn.Name then
+                    self._Connections = self._Connections or {}
+                    TableInsert(self._Connections, Conn.Name)
+                end
+
+                return Conn
             end
 
             Instances.Tween = function(self, Info, Goal)
@@ -499,6 +587,204 @@
                     return
                 end
 
+                -- Clean child wrappers created locally
+                if self._Children then
+                    for _, Child in ipairs(self._Children) do
+                        if Child and Child.Clean then
+                            pcall(function() Child:Clean() end)
+                        end
+                    end
+                    self._Children = nil
+                end
+
+                -- Disconnect connections created via Instances:Connect
+                if self._Connections then
+                    for _, Name in ipairs(self._Connections) do
+                        pcall(function() Library:Disconnect(Name) end)
+                    end
+                    self._Connections = nil
+                end
+
+                -- Remove any theme mappings for this instance to avoid lingering refs
+                if Library and Library.ThemeMap and Library.ThemeMap[self.Instance] then
+                    local ThemeData = Library.ThemeMap[self.Instance]
+                    local removedCount = 0
+                    for Property, Value in pairs(ThemeData.Properties or {}) do
+                        if type(Value) == "string" then
+                            local list = Library.ThemeIndex and Library.ThemeIndex[Value]
+                            if list then
+                                for idx = #list, 1, -1 do
+                                    if list[idx].Item == self.Instance and list[idx].Property == Property then
+                                        TableRemove(list, idx)
+                                        removedCount = removedCount + 1
+                                    end
+                                end
+                            end
+                        end
+                    end
+
+                    if removedCount > 0 then
+                        Library.Metrics = Library.Metrics or {}
+                        Library.Metrics.ThemeIndexEntries = math.max((Library.Metrics.ThemeIndexEntries or 0) - removedCount, 0)
+                    end
+
+                    Library.ThemeMap[self.Instance] = nil
+                    for idx = #Library.ThemeItems, 1, -1 do
+                        if Library.ThemeItems[idx] and Library.ThemeItems[idx].Item == self.Instance then
+                            TableRemove(Library.ThemeItems, idx)
+                        end
+                    end
+                end
+
+                -- Unregister dragger/resizer if registered
+                if self._Dragger and Library and Library._ActiveDraggers then
+                    Library._ActiveDraggers[self._Dragger] = nil
+                end
+                if self._Resizer and Library and Library._ActiveResizers then
+                    Library._ActiveResizers[self._Resizer] = nil
+                end
+
+                -- Clean up any in-progress ghost frames created during drag/resize
+                if self._Dragger and self._Dragger._Ghost then
+                    pcall(function()
+                        if self._Dragger._Ghost.Clean then
+                            self._Dragger._Ghost:Clean()
+                        elseif self._Dragger._Ghost.Instance then
+                            self._Dragger._Ghost.Instance:Destroy()
+                        end
+                    end)
+                    self._Dragger._Ghost = nil
+                end
+
+                if self._Resizer and self._Resizer._Ghost then
+                    pcall(function()
+                        if self._Resizer._Ghost.Clean then
+                            self._Resizer._Ghost:Clean()
+                        elseif self._Resizer._Ghost.Instance then
+                            self._Resizer._Ghost.Instance:Destroy()
+                        end
+                    end)
+                    self._Resizer._Ghost = nil
+                end
+
+                -- Unregister from centralized input handler tables (sliders, colorpickers)
+                if Library then
+                    if Library._ActiveSliders then
+                        for slider, _ in pairs(Library._ActiveSliders) do
+                            if slider == self._SliderRef or (slider and slider.Instance and slider.Instance == self.Instance) then
+                                Library._ActiveSliders[slider] = nil
+                            end
+                        end
+                    end
+
+                    if Library._ActiveColorpickers then
+                        for picker, _ in pairs(Library._ActiveColorpickers) do
+                            if picker == self._ColorpickerRef or (picker and picker.Instance and picker.Instance == self.Instance) then
+                                Library._ActiveColorpickers[picker] = nil
+                            end
+                        end
+                    end
+
+                    if Library._ActiveDraggers then
+                        for dragger, _ in pairs(Library._ActiveDraggers) do
+                            if dragger == self._Dragger or (dragger and dragger.Instance and dragger.Instance == self.Instance) then
+                                Library._ActiveDraggers[dragger] = nil
+                            end
+                        end
+                    end
+
+                    if Library._ActiveResizers then
+                        for resizer, _ in pairs(Library._ActiveResizers) do
+                            if resizer == self._Resizer or (resizer and resizer.Instance and resizer.Instance == self.Instance) then
+                                Library._ActiveResizers[resizer] = nil
+                            end
+                        end
+                    end
+                end
+
+                -- Disconnect any stored input connections created for this wrapper (colorpicker/keybind picks, global handlers)
+                if self._InputConnName and Library then
+                    pcall(function() Library:Disconnect(self._InputConnName) end)
+                    self._InputConnName = nil
+                end
+                if self._PickConnName and Library then
+                    pcall(function() Library:Disconnect(self._PickConnName) end)
+                    self._PickConnName = nil
+                end
+                if self._InputConnName2 and Library then
+                    pcall(function() Library:Disconnect(self._InputConnName2) end)
+                    self._InputConnName2 = nil
+                end
+                if self._LayoutConnName and Library then
+                    pcall(function() Library:Disconnect(self._LayoutConnName) end)
+                    self._LayoutConnName = nil
+                end
+                if self._MenuConnName and Library then
+                    pcall(function() Library:Disconnect(self._MenuConnName) end)
+                    self._MenuConnName = nil
+                end
+
+                -- Remove associated flags to avoid lingering config entries
+                if self._FlagName and Library then
+                    Library.Flags[self._FlagName] = nil
+                    Library.SetFlags[self._FlagName] = nil
+                    self._FlagName = nil
+                end
+
+                -- Remove theme mappings for any children created under this instance to avoid orphaned theme entries
+                if self.Instance and Library and Library.ThemeMap then
+                    local removedCountChildren = 0
+                    for _, child in pairs(self.Instance:GetDescendants()) do
+                        if Library.ThemeMap[child] then
+                            local ThemeDataChild = Library.ThemeMap[child]
+                            for Property, Value in pairs(ThemeDataChild.Properties or {}) do
+                                if type(Value) == "string" then
+                                    local list = Library.ThemeIndex and Library.ThemeIndex[Value]
+                                    if list then
+                                        for idx = #list, 1, -1 do
+                                            if list[idx].Item == child and list[idx].Property == Property then
+                                                TableRemove(list, idx)
+                                                removedCountChildren = removedCountChildren + 1
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+
+                            Library.ThemeMap[child] = nil
+                            for idx = #Library.ThemeItems, 1, -1 do
+                                if Library.ThemeItems[idx] and Library.ThemeItems[idx].Item == child then
+                                    TableRemove(Library.ThemeItems, idx)
+                                end
+                            end
+                        end
+                    end
+
+                    if removedCountChildren > 0 then
+                        Library.Metrics = Library.Metrics or {}
+                        Library.Metrics.ThemeIndexEntries = math.max((Library.Metrics.ThemeIndexEntries or 0) - removedCountChildren, 0)
+                    end
+                end
+
+                -- Remove Page/SubPage registrations from Window lists to avoid accumulation
+                if self.Window and self.Window.Pages then
+                    for idx = #self.Window.Pages, 1, -1 do
+                        if self.Window.Pages[idx] == self then
+                            TableRemove(self.Window.Pages, idx)
+                            break
+                        end
+                    end
+                end
+                if self.Window and self.Window.SubPages then
+                    for idx = #self.Window.SubPages, 1, -1 do
+                        if self.Window.SubPages[idx] == self then
+                            TableRemove(self.Window.SubPages, idx)
+                            break
+                        end
+                    end
+                end
+
+                -- Finally destroy the instance
                 self.Instance:Destroy()
                 self = nil
             end
@@ -510,39 +796,129 @@
 
                 local Gui = self.Instance
 
-                local Dragging = false 
+                -- [OPTIMIZATION] Use dragger object for centralized handler
+                local Dragger = { Dragging = false }
                 local DragStart
-                local StartPosition 
+                local StartPosition
+                local StartAbsPosition
+                local DragGhost -- wrapper
+                local VisibleBefore
 
+                local LastDragUpdate = 0
                 local Set = function(Input)
+                    local now = os.clock()
+                    if now - LastDragUpdate < (1/60) then
+                        return
+                    end
+                    LastDragUpdate = now
+
                     local DragDelta = Input.Position - DragStart
-                    self:Tween(TweenInfo.new(0.16, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = UDim2New(StartPosition.X.Scale, StartPosition.X.Offset + DragDelta.X, StartPosition.Y.Scale, StartPosition.Y.Offset + DragDelta.Y)})
+
+                    -- update ghost position if exists (cheap visual)
+                    if DragGhost and DragGhost.Instance then
+                        local newAbsX = StartAbsPosition.X + DragDelta.X
+                        local newAbsY = StartAbsPosition.Y + DragDelta.Y
+                        pcall(function()
+                            DragGhost.Instance.Position = UDim2New(0, newAbsX, 0, newAbsY)
+                        end)
+                    else
+                        local newPos = UDim2New(StartPosition.X.Scale, StartPosition.X.Offset + DragDelta.X, StartPosition.Y.Scale, StartPosition.Y.Offset + DragDelta.Y)
+                        pcall(function()
+                            Gui.Position = newPos
+                        end)
+                    end
                 end
 
                 self:Connect("InputBegan", function(Input)
                     if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                        Dragging = true
+                        Dragger.Dragging = true
 
                         DragStart = Input.Position
                         StartPosition = Gui.Position
+                        StartAbsPosition = Gui.AbsolutePosition
+
+                        -- create a lightweight ghost in the top-level holder to avoid costly rendering during drag
+                        if Library and Library.Holder and Library.Holder.Instance then
+                            DragGhost = Instances:Create("Frame", {
+                                Parent = Library.Holder.Instance,
+                                Name = "\0",
+                                Position = UDim2New(0, StartAbsPosition.X, 0, StartAbsPosition.Y),
+                                Size = UDim2New(0, Gui.AbsoluteSize.X, 0, Gui.AbsoluteSize.Y),
+                                BackgroundColor3 = Gui.BackgroundColor3 or Library.Theme.Background,
+                                BackgroundTransparency = 0.15,
+                                BorderSizePixel = 0,
+                                ZIndex = 10000 -- Ghost debajo de la imagen
+                            })
+                            
+                            -- Add drag image overlay
+                            local DragImage = Instances:Create("ImageLabel", {
+                                Parent = DragGhost.Instance,
+                                Name = "DragImage",
+                                Size = UDim2.new(1, 0, 1, 0),
+                                Position = UDim2.new(0, 0, 0, 0),
+                                BackgroundTransparency = 1,
+                                BorderSizePixel = 0,
+                                ZIndex = 10001, -- Imagen siempre encima del ghost
+                                ScaleType = Enum.ScaleType.Stretch,
+                                ImageTransparency = 0.75,
+                                Image = ""
+                            })
+                            
+                            -- Try to load custom asset for drag image
+                            local success, result = pcall(function()
+                                if getcustomasset and isfile("1.webp") then
+                                    local asset = getcustomasset("1.webp")
+                                    if asset then
+                                        DragImage.Instance.Image = asset
+                                    end
+                                end
+                            end)
+                            
+                            -- Fallback: show a simple icon if no custom asset
+                            if not success or not DragImage.Instance.Image or DragImage.Instance.Image == "" then
+                                DragImage.Instance.Image = "rbxasset://textures/ui/Controls/pointer.png"
+                            end
+                            
+                            Dragger._Ghost = DragGhost
+                        end
+
+                        -- hide the heavy GUI while dragging to reduce re-render cost
+                        VisibleBefore = Gui.Visible
+                        Gui.Visible = false
                     end
                 end)
 
                 self:Connect("InputEnded", function(Input)
                     if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                        Dragging = false
-                    end
-                end)
+                        Dragger.Dragging = false
 
-                Library:Connect(UserInputService.InputChanged, function(Input)
-                    if Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch then
-                        if Dragging then
-                            Set(Input)
+                        -- compute final position based on start and last input delta
+                        if DragStart and StartPosition then
+                            local DragDelta = Input.Position - DragStart
+                            local finalPos = UDim2New(StartPosition.X.Scale, StartPosition.X.Offset + DragDelta.X, StartPosition.Y.Scale, StartPosition.Y.Offset + DragDelta.Y)
+                            pcall(function()
+                                Gui.Position = finalPos
+                            end)
                         end
+
+                        -- clean up ghost and restore visibility
+                        if DragGhost and DragGhost.Clean then
+                            pcall(function() DragGhost:Clean() end)
+                        elseif DragGhost and DragGhost.Instance then
+                            pcall(function() DragGhost.Instance:Destroy() end)
+                        end
+                        DragGhost = nil
+                        Dragger._Ghost = nil
+
+                        Gui.Visible = VisibleBefore
                     end
                 end)
 
-                return Dragging
+                -- [OPTIMIZATION] Use centralized input handler
+                Library:RegisterDragger(Dragger, Set)
+                self._Dragger = Dragger
+
+                return Dragger.Dragging
             end
 
             Instances.MakeResizeable = function(self, Minimum, Maximum)
@@ -552,7 +928,8 @@
 
                 local Gui = self.Instance
 
-                local Resizing = false 
+                -- [OPTIMIZATION] Use resizer object for centralized handler
+                local Resizer = { Resizing = false }
                 local Start = UDim2New()
                 local Delta = UDim2New()
                 local ResizeMax = Gui.Parent.AbsoluteSize - Gui.AbsoluteSize
@@ -573,46 +950,113 @@
 
                 ResizeButton:Connect("InputBegan", function(Input)
                     if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                        Resizing = true
+                        Resizer.Resizing = true
 
                         Start = Gui.Size - UDim2New(0, Input.Position.X, 0, Input.Position.Y)
+
+                        -- create lightweight ghost for resizing to avoid heavy re-render during drag
+                        if Library and Library.Holder and Library.Holder.Instance then
+                            Resizer._Ghost = Instances:Create("Frame", {
+                                Parent = Library.Holder.Instance,
+                                Name = "\0",
+                                Position = UDim2New(0, Gui.AbsolutePosition.X, 0, Gui.AbsolutePosition.Y),
+                                Size = UDim2New(0, Gui.AbsoluteSize.X, 0, Gui.AbsoluteSize.Y),
+                                BackgroundColor3 = Gui.BackgroundColor3 or Library.Theme.Background,
+                                BackgroundTransparency = 0.15,
+                                BorderSizePixel = 0,
+                                ZIndex = 10000
+                            })
+                        end
+
+                        Resizer._VisibleBefore = Gui.Visible
+                        Gui.Visible = false
                     end
                 end)
 
                 ResizeButton:Connect("InputEnded", function(Input)
                     if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                        Resizing = false
+                        Resizer.Resizing = false
+
+                        -- finalize size from last input and apply to real GUI
+                        local finalDelta = Start + UDim2New(0, Input.Position.X, 0, Input.Position.Y)
+                        finalDelta = UDim2New(0, math.clamp(finalDelta.X.Offset, Minimum.X, ResizeMax.X), 0, math.clamp(finalDelta.Y.Offset, Minimum.Y, ResizeMax.Y))
+                        pcall(function()
+                            Gui.Size = finalDelta
+                        end)
+
+                        -- clean ghost and restore visibility
+                        if Resizer._Ghost and Resizer._Ghost.Clean then
+                            pcall(function() Resizer._Ghost:Clean() end)
+                        elseif Resizer._Ghost and Resizer._Ghost.Instance then
+                            pcall(function() Resizer._Ghost.Instance:Destroy() end)
+                        end
+                        Resizer._Ghost = nil
+                        Gui.Visible = Resizer._VisibleBefore
                     end
                 end)
 
-                Library:Connect(UserInputService.InputChanged, function(Input)
-                    if Input.UserInputType == Enum.UserInputType.MouseMovement and Resizing then
-                        ResizeMax = Maximum or Gui.Parent.AbsoluteSize - Gui.AbsoluteSize
+                -- [OPTIMIZATION] Use centralized input handler
+                local LastResizeUpdate = 0
+                Library:RegisterResizer(Resizer, function(Input)
+                    local now = os.clock()
+                    if now - LastResizeUpdate < (1/60) then
+                        return
+                    end
+                    LastResizeUpdate = now
 
-                        Delta = Start + UDim2New(0, Input.Position.X, 0, Input.Position.Y)
-                        Delta = UDim2New(0, math.clamp(Delta.X.Offset, Minimum.X, ResizeMax.X), 0, math.clamp(Delta.Y.Offset, Minimum.Y, ResizeMax.Y))
+                    ResizeMax = Maximum or Gui.Parent.AbsoluteSize - Gui.AbsoluteSize
 
-                        Tween:Create(Gui, TweenInfo.new(0.17, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = Delta}, true)
+                    Delta = Start + UDim2New(0, Input.Position.X, 0, Input.Position.Y)
+                    Delta = UDim2New(0, math.clamp(Delta.X.Offset, Minimum.X, ResizeMax.X), 0, math.clamp(Delta.Y.Offset, Minimum.Y, ResizeMax.Y))
+
+                    -- update ghost size during interaction to keep visuals cheap
+                    if Resizer._Ghost and Resizer._Ghost.Instance then
+                        pcall(function()
+                            Resizer._Ghost.Instance.Size = UDim2New(0, Delta.X.Offset, 0, Delta.Y.Offset)
+                        end)
+                    else
+                        pcall(function()
+                            Gui.Size = Delta
+                        end)
                     end
                 end)
 
-                return Resizing
+                -- keep a reference so Clean can unregister
+                self._Resizer = Resizer
+
+                -- track the resize button as a child wrapper so its connections are cleaned
+                if ResizeButton then
+                    self._Children = self._Children or {}
+                    TableInsert(self._Children, ResizeButton)
+                end
+
+                return Resizer.Resizing
             end
 
             Instances.OnHover = function(self, Function)
                 if not self.Instance then 
                     return
                 end
-                
-                return Library:Connect(self.Instance.MouseEnter, Function)
+                local Conn = Library:Connect(self.Instance.MouseEnter, Function)
+                if Conn and Conn.Name then
+                    self._Connections = self._Connections or {}
+                    TableInsert(self._Connections, Conn.Name)
+                end
+
+                return Conn
             end
 
             Instances.OnHoverLeave = function(self, Function)
                 if not self.Instance then 
                     return
                 end
-                
-                return Library:Connect(self.Instance.MouseLeave, Function)
+                local Conn = Library:Connect(self.Instance.MouseLeave, Function)
+                if Conn and Conn.Name then
+                    self._Connections = self._Connections or {}
+                    TableInsert(self._Connections, Conn.Name)
+                end
+
+                return Conn
             end
         end
 
@@ -718,23 +1162,24 @@
                 [Property] = Visibility and OldTransparency or 1
             }, true)
 
+            local fadeConnName = "FadeItem_" .. HttpService:GenerateGUID(false)
             Library:Connect(NewTween.Tween.Completed, function()
+                Library:Disconnect(fadeConnName)
                 if not Visibility then 
                     task.wait()
                     Item[Property] = OldTransparency
                 end
-            end)
+            end, fadeConnName)
 
             return NewTween
         end
 
         Library.Unload = function(self)
-            for Index, Value in self.Connections do 
-                Value.Connection:Disconnect()
-            end
+            -- mark unloaded so delayed callbacks (notifications, timeouts) abort safely
+            self._Unloaded = true
 
-            for Index, Value in self.Threads do 
-                coroutine.close(Value)
+            for _, Value in pairs(self.Connections) do 
+                if Value.Connection then Value.Connection:Disconnect() end
             end
 
             if self.Holder then 
@@ -745,21 +1190,12 @@
             getgenv().Library = nil
         end
 
-        Library.Thread = function(self, Function)
-            local NewThread = coroutine.create(Function)
-            
-            coroutine.wrap(function()
-                coroutine.resume(NewThread)
-            end)()
-
-            TableInsert(self.Threads, NewThread)
-
-            return NewThread
+        Library.Thread = function(self, Function, ...)
+            return task.spawn(Function, ...)
         end
         
         Library.SafeCall = function(self, Function, ...)
-            local Arguements = { ... }
-            local Success, Result = pcall(Function, TableUnpack(Arguements))
+            local Success, Result = pcall(Function, ...)
 
             if not Success then
                 Library:Notification("Error caught in function, report this to the devs:\n"..Result, 5, FromRGB(255, 0, 0))
@@ -771,6 +1207,11 @@
         end
 
         Library.Connect = function(self, Event, Callback, Name)
+            -- if a connection with this name already exists, disconnect it first to avoid leaking RBXScriptConnections
+            if Name and self.Connections[Name] then
+                pcall(function() self:Disconnect(Name) end)
+            end
+
             Name = Name or StringFormat("Connection_%s_%s", self.UnnamedConnections + 1, HttpService:GenerateGUID(false))
 
             local NewConnection = {
@@ -780,21 +1221,107 @@
                 Connection = nil
             }
 
-            Library:Thread(function()
-                NewConnection.Connection = Event:Connect(Callback)
-            end)
+            NewConnection.Connection = Event:Connect(Callback)
 
-            TableInsert(self.Connections, NewConnection)
+            self.Connections[Name] = NewConnection
+
+            -- metrics
+            self.Metrics = self.Metrics or {}
+            self.Metrics.Connections = (self.Metrics.Connections or 0) + 1
+
             return NewConnection
         end
 
         Library.Disconnect = function(self, Name)
-            for _, Connection in self.Connections do 
-                if Connection.Name == Name then
-                    Connection.Connection:Disconnect()
-                    break
-                end
+            local conn = self.Connections[Name]
+            if conn and conn.Connection then
+                conn.Connection:Disconnect()
+                self.Connections[Name] = nil
+
+                -- metrics
+                self.Metrics = self.Metrics or {}
+                self.Metrics.Connections = math.max((self.Metrics.Connections or 1) - 1, 0)
             end
+        end
+
+        Library.SetFastMode = function(self, Bool)
+            self.FastMode = Bool and true or false
+        end
+
+        Library.GetMetrics = function(self)
+            return self.Metrics or {}
+        end
+        
+        -- [OPTIMIZATION] Setup a single centralized InputChanged handler
+        -- This replaces 100+ individual connections with ONE connection
+        Library.SetupCentralInputHandler = function(self)
+            if self._InputHandlerSetup then return end
+            self._InputHandlerSetup = true
+            
+            -- Single InputChanged connection for ALL sliders, colorpickers, draggers, resizers
+            Library:Connect(UserInputService.InputChanged, function(Input)
+                if Input.UserInputType ~= Enum.UserInputType.MouseMovement and Input.UserInputType ~= Enum.UserInputType.Touch then
+                    return
+                end
+                
+                -- Handle active sliders (usually only 0-1 at a time)
+                for slider, callback in pairs(self._ActiveSliders) do
+                    if slider.Sliding then
+                        callback(Input)
+                    end
+                end
+                
+                -- Handle active colorpickers (palette/hue/alpha sliding)
+                for picker, callbacks in pairs(self._ActiveColorpickers) do
+                    if callbacks.palette and picker.SlidingPalette then
+                        callbacks.palette(Input)
+                    end
+                    if callbacks.hue and picker.SlidingHue then
+                        callbacks.hue(Input)
+                    end
+                    if callbacks.alpha and picker.SlidingAlpha then
+                        callbacks.alpha(Input)
+                    end
+                end
+                
+                -- Handle active draggers
+                for dragger, callback in pairs(self._ActiveDraggers) do
+                    if dragger.Dragging then
+                        callback(Input)
+                    end
+                end
+                
+                -- Handle active resizers
+                for resizer, callback in pairs(self._ActiveResizers) do
+                    if resizer.Resizing then
+                        callback(Input)
+                    end
+                end
+            end, "CentralInputHandler")
+        end
+        
+        -- Register a slider for centralized input handling
+        Library.RegisterSlider = function(self, slider, callback)
+            self:SetupCentralInputHandler()
+            self._ActiveSliders[slider] = callback
+        end
+        
+        -- Register a colorpicker for centralized input handling  
+        Library.RegisterColorpicker = function(self, picker, callbacks)
+            self:SetupCentralInputHandler()
+            self._ActiveColorpickers[picker] = callbacks
+        end
+        
+        -- Register a dragger for centralized input handling
+        Library.RegisterDragger = function(self, dragger, callback)
+            self:SetupCentralInputHandler()
+            self._ActiveDraggers[dragger] = callback
+        end
+        
+        -- Register a resizer for centralized input handling
+        Library.RegisterResizer = function(self, resizer, callback)
+            self:SetupCentralInputHandler()
+            self._ActiveResizers[resizer] = callback
         end
 
         Library.NextFlag = function(self)
@@ -818,6 +1345,17 @@
 
             TableInsert(self.ThemeItems, ThemeData)
             self.ThemeMap[Item] = ThemeData
+
+            self.ThemeIndex = self.ThemeIndex or {}
+            for Property, Value in pairs(Properties) do
+                if type(Value) == "string" then
+                    self.ThemeIndex[Value] = self.ThemeIndex[Value] or {}
+                    table.insert(self.ThemeIndex[Value], { Item = Item, Property = Property })
+                    -- metrics
+                    self.Metrics = self.Metrics or {}
+                    self.Metrics.ThemeIndexEntries = (self.Metrics.ThemeIndexEntries or 0) + 1
+                end
+            end
         end
 
         Library.GetConfig = function(self)
@@ -917,23 +1455,21 @@
 
         Library.ChangeTheme = function(self, Theme, Color)
             self.Theme[Theme] = Color
-
-            for _, Item in self.ThemeItems do
-                for Property, Value in Item.Properties do
-                    if type(Value) == "string" and Value == Theme then
-                        Item.Item[Property] = Color
-                    end
-                end
+            for _, entry in ipairs(self.ThemeIndex and self.ThemeIndex[Theme] or {}) do
+                if entry.Item then entry.Item[entry.Property] = Color end
             end
         end
 
         Library.IsMouseOverFrame = function(self, Frame)
-            Frame = Frame.Instance
+            if not Frame then return false end
+
+            local Inst = Frame.Instance or Frame
+            if not Inst or not Inst.AbsolutePosition or not Inst.AbsoluteSize then return false end
 
             local MousePosition = Vector2New(Mouse.X, Mouse.Y)
 
-            return MousePosition.X >= Frame.AbsolutePosition.X and MousePosition.X <= Frame.AbsolutePosition.X + Frame.AbsoluteSize.X 
-            and MousePosition.Y >= Frame.AbsolutePosition.Y and MousePosition.Y <= Frame.AbsolutePosition.Y + Frame.AbsoluteSize.Y
+            return MousePosition.X >= Inst.AbsolutePosition.X and MousePosition.X <= Inst.AbsolutePosition.X + Inst.AbsoluteSize.X
+            and MousePosition.Y >= Inst.AbsolutePosition.Y and MousePosition.Y <= Inst.AbsolutePosition.Y + Inst.AbsoluteSize.Y
         end
 
         Library.Watermark = function(self, Name)
@@ -1015,96 +1551,137 @@
         end
 
         Library.Notification = function(self, Text, Duration, Color, Icon)
-            local Items = { } do
-                Items["Notification"] = Instances:Create("Frame", {
-                    Parent = Library.NotifHolder.Instance,
-                    Name = "\0",
-                    Size = UDim2New(0, 0, 0, 22),
-                    BorderColor3 = FromRGB(10, 10, 10),
-                    BorderSizePixel = 2,
-                    AutomaticSize = Enum.AutomaticSize.X,
-                    BackgroundColor3 = FromRGB(15, 15, 20)
-                })  Items["Notification"]:AddToTheme({BackgroundColor3 = "Background", BorderColor3 = "Border"})
-                
-                Instances:Create("UIStroke", {
-                    Parent = Items["Notification"].Instance,
-                    ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-                    LineJoinMode = Enum.LineJoinMode.Miter,
-                    Name = "\0",
-                    Color = FromRGB(27, 27, 32)
-                }):AddToTheme({Color = "Outline"}) 
-                
-                Instances:Create("UIPadding", {
-                    Parent = Items["Notification"].Instance,
-                    PaddingTop = UDimNew(0, 1),
-                    PaddingRight = UDimNew(0, 8),
-                    PaddingLeft = UDimNew(0, 5)
-                }) 
-                
-                Items["Title"] = Instances:Create("TextLabel", {
-                    Parent = Items["Notification"].Instance,
-                    FontFace = Library.Font,
-                    TextColor3 = FromRGB(215, 215, 215),
-                    BorderColor3 = FromRGB(0, 0, 0),
-                    Text = Text,
-                    Name = "\0",
-                    Size = UDim2New(1, 0, 0, 15),
-                    BackgroundTransparency = 1,
-                    Position = UDim2New(0, 13, 0, 2),
-                    BorderSizePixel = 0,
-                    AutomaticSize = Enum.AutomaticSize.X,
-                    TextSize = 12,
-                    BackgroundColor3 = FromRGB(255, 255, 255)
-                })  Items["Title"]:AddToTheme({TextColor3 = "Text"})
-                
-                Instances:Create("UIStroke", {
-                    Parent = Items["Title"].Instance,
-                    LineJoinMode = Enum.LineJoinMode.Miter,
-                    Name = "\0"
-                }):AddToTheme({Color = "Text Border"})
+            Duration = Duration or 3
 
-                Items["AccentLine"] = Instances:Create("Frame", {
-                    Parent = Items["Notification"].Instance,
-                    Name = "\0",
-                    Position = UDim2New(0, -5, 0, -1),
-                    BorderColor3 = FromRGB(0, 0, 0),
-                    Size = UDim2New(1, 13, 0, 2),
-                    BorderSizePixel = 0,
-                    BackgroundColor3 = Color
-                })  
-                
-                Instances:Create("UIGradient", {
-                    Parent = Items["AccentLine"].Instance,
-                    Rotation = 90,
-                    Color = RGBSequence{RGBSequenceKeypoint(0, FromRGB(255, 255, 255)), RGBSequenceKeypoint(1, FromRGB(65, 65, 65))}
-                })
-                
-                Items["Icon"] = Instances:Create("ImageLabel", {
-                    Parent = Items["Notification"].Instance,
-                    ImageColor3 = FromRGB(255, 255, 255),
-                    ScaleType = Enum.ScaleType.Fit,
-                    BorderColor3 = FromRGB(0, 0, 0),
-                    Name = "\0",
-                    Image = "rbxassetid://94324346713012",
-                    BackgroundTransparency = 1,
-                    Position = UDim2New(0, -2, 0, 3),
-                    Size = UDim2New(0, 13, 0, 13),
-                    BorderSizePixel = 0,
-                    BackgroundColor3 = FromRGB(255, 255, 255)
-                }) 
+            self.NotificationPool = self.NotificationPool or {}
+            local Items
 
-                if not Icon then 
-                    Items["Icon"]:Clean()
-                    Items["Title"].Instance.Position = UDim2New(0, 1, 0, 2)
-                else
-                    Items["Icon"].Instance.Image = Icon[1]
-                    Items["Icon"].Instance.ImageColor3 = Icon[2] or FromRGB(255, 255, 255)
+            if #self.NotificationPool > 0 then
+                Items = table.remove(self.NotificationPool)
+                -- reuse: update content
+                if Items["Title"] and Items["Title"].Instance then
+                    Items["Title"].Instance.Text = Text
+                end
+                if Items["AccentLine"] and Items["AccentLine"].Instance then
+                    Items["AccentLine"].Instance.BackgroundColor3 = Color or Items["AccentLine"].Instance.BackgroundColor3
+                end
+                if Items["Icon"] and Items["Icon"].Instance then
+                    if Icon then
+                        Items["Icon"].Instance.Image = Icon[1]
+                        Items["Icon"].Instance.ImageColor3 = Icon[2] or FromRGB(255,255,255)
+                        Items["Icon"].Instance.Visible = true
+                    else
+                        Items["Icon"].Instance.Visible = false
+                    end
+                end
+                Items["Notification"].Instance.Parent = Library.NotifHolder.Instance
+                Items["Notification"].Instance.Visible = true
+            else
+                Items = { } do
+                    Items["Notification"] = Instances:Create("Frame", {
+                        Parent = Library.NotifHolder.Instance,
+                        Name = "\0",
+                        Size = UDim2New(0, 0, 0, 22),
+                        BorderColor3 = FromRGB(10, 10, 10),
+                        BorderSizePixel = 2,
+                        AutomaticSize = Enum.AutomaticSize.X,
+                        BackgroundColor3 = FromRGB(15, 15, 20)
+                    })  Items["Notification"]:AddToTheme({BackgroundColor3 = "Background", BorderColor3 = "Border"})
+                    
+                    Items["NotificationStroke"] = Instances:Create("UIStroke", {
+                        Parent = Items["Notification"].Instance,
+                        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+                        LineJoinMode = Enum.LineJoinMode.Miter,
+                        Name = "\0",
+                        Color = FromRGB(27, 27, 32)
+                    }) Items["NotificationStroke"]:AddToTheme({Color = "Outline"})
+                    
+                    Instances:Create("UIPadding", {
+                        Parent = Items["Notification"].Instance,
+                        PaddingTop = UDimNew(0, 1),
+                        PaddingRight = UDimNew(0, 8),
+                        PaddingLeft = UDimNew(0, 5)
+                    }) 
+                    
+                    Items["Title"] = Instances:Create("TextLabel", {
+                        Parent = Items["Notification"].Instance,
+                        FontFace = Library.Font,
+                        TextColor3 = FromRGB(215, 215, 215),
+                        BorderColor3 = FromRGB(0, 0, 0),
+                        Text = Text,
+                        Name = "\0",
+                        Size = UDim2New(1, 0, 0, 15),
+                        BackgroundTransparency = 1,
+                        Position = UDim2New(0, 13, 0, 2),
+                        BorderSizePixel = 0,
+                        AutomaticSize = Enum.AutomaticSize.X,
+                        TextSize = 12,
+                        BackgroundColor3 = FromRGB(255, 255, 255)
+                    })  Items["Title"]:AddToTheme({TextColor3 = "Text"})
+                    
+                    Items["TitleStroke"] = Instances:Create("UIStroke", {
+                        Parent = Items["Title"].Instance,
+                        LineJoinMode = Enum.LineJoinMode.Miter,
+                        Name = "\0"
+                    }) Items["TitleStroke"]:AddToTheme({Color = "Text Border"})
+
+                    Items["AccentLine"] = Instances:Create("Frame", {
+                        Parent = Items["Notification"].Instance,
+                        Name = "\0",
+                        Position = UDim2New(0, -5, 0, -1),
+                        BorderColor3 = FromRGB(0, 0, 0),
+                        Size = UDim2New(1, 13, 0, 2),
+                        BorderSizePixel = 0,
+                        BackgroundColor3 = Color
+                    })  
+                    
+                    Instances:Create("UIGradient", {
+                        Parent = Items["AccentLine"].Instance,
+                        Rotation = 90,
+                        Color = RGBSequence{RGBSequenceKeypoint(0, FromRGB(255, 255, 255)), RGBSequenceKeypoint(1, FromRGB(65, 65, 65))}
+                    })
+                    
+                    Items["Icon"] = Instances:Create("ImageLabel", {
+                        Parent = Items["Notification"].Instance,
+                        ImageColor3 = FromRGB(255, 255, 255),
+                        ScaleType = Enum.ScaleType.Fit,
+                        BorderColor3 = FromRGB(0, 0, 0),
+                        Name = "\0",
+                        Image = Icon and Icon[1] or "rbxassetid://94324346713012",
+                        BackgroundTransparency = 1,
+                        Position = UDim2New(0, -2, 0, 3),
+                        Size = UDim2New(0, 13, 0, 13),
+                        BorderSizePixel = 0,
+                        BackgroundColor3 = FromRGB(255, 255, 255)
+                    }) 
+
+                    if not Icon then 
+                        Items["Icon"].Instance.Visible = false
+                        Items["Title"].Instance.Position = UDim2New(0, 1, 0, 2)
+                    else
+                        Items["Icon"].Instance.ImageColor3 = Icon[2] or FromRGB(255, 255, 255)
+                    end
                 end
             end
 
+            -- start hidden
             Items["Notification"].Instance.BackgroundTransparency = 1
             Items["Notification"].Instance.Size = UDim2New(0, 0, 0, 0)
-            for Index, Value in Items["Notification"].Instance:GetDescendants() do
+            -- collect specific notification instances instead of GetDescendants()
+            local notificationChildren = {}
+            for _, key in pairs({"Title", "TitleStroke", "AccentLine", "Icon", "Notification"}) do
+                local w = Items[key]
+                if w and w.Instance then
+                    TableInsert(notificationChildren, w.Instance)
+                end
+            end
+            -- include common one-level children (e.g. UIGradient under AccentLine)
+            if Items["AccentLine"] and Items["AccentLine"].Instance then
+                for _, child in pairs(Items["AccentLine"].Instance:GetChildren()) do
+                    TableInsert(notificationChildren, child)
+                end
+            end
+            for Index, Value in pairs(notificationChildren) do
                 if Value:IsA("UIStroke") then 
                     Value.Transparency = 1
                 elseif Value:IsA("TextLabel") then 
@@ -1121,7 +1698,7 @@
                 
                 task.wait(0.06)
 
-                for Index, Value in Items["Notification"].Instance:GetDescendants() do
+                for Index, Value in pairs(notificationChildren) do
                     if Value:IsA("UIStroke") then
                         Tween:Create(Value, nil, {Transparency = 0}, true)
                     elseif Value:IsA("TextLabel") then
@@ -1134,7 +1711,8 @@
                 end
 
                 task.delay(Duration + 0.1, function()
-                    for Index, Value in Items["Notification"].Instance:GetDescendants() do
+                    if not Library or Library._Unloaded then return end
+                    for Index, Value in pairs(notificationChildren) do
                         if Value:IsA("UIStroke") then
                             Tween:Create(Value, nil, {Transparency = 1}, true)
                         elseif Value:IsA("TextLabel") then
@@ -1151,7 +1729,19 @@
                     Items["Notification"]:Tween(nil, {BackgroundTransparency = 1, Size = UDim2New(0, 0, 0, 0)})
 
                     task.wait(0.5)
-                    Items["Notification"]:Clean()
+                    -- return to pool instead of destroying (cap pool size)
+                    Items["Notification"].Instance.Visible = false
+                    Library.NotificationPool = Library.NotificationPool or {}
+                    if #Library.NotificationPool < 15 then
+                        TableInsert(Library.NotificationPool, Items)
+                    else
+                        -- pool full: destroy to avoid unbounded memory growth
+                        if Items["Notification"] and Items["Notification"].Clean then
+                            pcall(function() Items["Notification"]:Clean() end)
+                        elseif Items["Notification"] and Items["Notification"].Instance then
+                            pcall(function() Items["Notification"].Instance:Destroy() end)
+                        end
+                    end
                 end)
             end)
         end
@@ -1593,10 +2183,20 @@
                     Color = FromRGB(27, 27, 32)
                 }):AddToTheme({Color = "Outline"})
             end
+            -- store references for cleanup
+            if Items["ColorpickerWindow"] then
+                Items["ColorpickerWindow"]._FlagName = Data.Flag
+                Items["ColorpickerWindow"]._ColorpickerRef = Colorpicker
+            end
+            if Items["ColorpickerButton"] then
+                Items["ColorpickerButton"]._FlagName = Data.Flag
+            end
 
-            local SlidingPalette = false
-            local SlidingHue = false
-            local SlidingAlpha = false
+            -- [OPTIMIZATION] Use object properties instead of local vars for centralized handler
+            Colorpicker.SlidingPalette = false
+            Colorpicker.SlidingHue = false
+            Colorpicker.SlidingAlpha = false
+            local SlidingPalette, SlidingHue, SlidingAlpha -- Keep locals for backward compat
 
             local Debounce = false
 
@@ -1625,11 +2225,17 @@
                     Library.CurrentColorpicker = nil
                 end
 
-                local Descendants = Items["ColorpickerWindow"].Instance:GetDescendants()
+                -- iterate over known Items (faster than GetDescendants)
+                local Descendants = {}
+                for _, wrapper in pairs(Items) do
+                    if wrapper and wrapper.Instance then
+                        TableInsert(Descendants, wrapper.Instance)
+                    end
+                end
                 TableInsert(Descendants, Items["ColorpickerWindow"].Instance)
 
                 local NewTween
-                for Index, Value in Descendants do 
+                for Index, Value in ipairs(Descendants) do 
                     local ValueIndex = Library:GetTransparencyPropertyFromItem(Value)
 
                     if not ValueIndex then 
@@ -1649,10 +2255,17 @@
                     end
                 end
 
-                Library:Connect(NewTween.Tween.Completed, function()
+                if NewTween and NewTween.Tween and NewTween.Tween.Completed then
+                    local connName = "TweenDone_" .. HttpService:GenerateGUID(false)
+                    Library:Connect(NewTween.Tween.Completed, function()
+                        Library:Disconnect(connName)
+                        Debounce = false
+                        Items["ColorpickerWindow"].Instance.Visible = Bool
+                    end, connName)
+                else
                     Debounce = false
                     Items["ColorpickerWindow"].Instance.Visible = Bool
-                end)
+                end
             end
 
             function Colorpicker:Get()
@@ -1696,11 +2309,11 @@
 
                 Items["AlphaDragger"]:Tween(TweenInfo.new(0.17, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = UDim2New(AlphaPositionX, 0, 0, 0)})
 
-                self:Update()
+                self:Update(false, self.Color)
             end
 
-            function Colorpicker:Update(IsFromAlpha)
-                self.Color = FromHSV(self.Hue, self.Saturation, self.Value)
+            function Colorpicker:Update(IsFromAlpha, precomputedColor)
+                    self.Color = precomputedColor or FromHSV(self.Hue, self.Saturation, self.Value)
                 self.HexValue = self.Color:ToHex()
 
                 Library.Flags[Data.Flag] = {
@@ -1709,11 +2322,26 @@
                     Alpha = self.Alpha
                 }
 
-                Items["ColorpickerButton"]:Tween(TweenInfo.new(0.17, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundColor3 = self.Color})
-                Items["Palette"]:Tween(TweenInfo.new(0.17, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundColor3 = FromHSV(self.Hue, 1, 1)})
+                local isSliding = Colorpicker.SlidingPalette or Colorpicker.SlidingHue or Colorpicker.SlidingAlpha
 
-                if not IsFromAlpha then 
-                    Items["Alpha"]:Tween(TweenInfo.new(0.17, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundColor3 = self.Color})
+                if isSliding then
+                    -- immediate updates while dragging to avoid spawning many tweens
+                    if Items["ColorpickerButton"] and Items["ColorpickerButton"].Instance then
+                        Items["ColorpickerButton"].Instance.BackgroundColor3 = self.Color
+                    end
+                    if Items["Palette"] and Items["Palette"].Instance then
+                        Items["Palette"].Instance.BackgroundColor3 = FromHSV(self.Hue, 1, 1)
+                    end
+                    if not IsFromAlpha and Items["Alpha"] and Items["Alpha"].Instance then
+                        Items["Alpha"].Instance.BackgroundColor3 = self.Color
+                    end
+                else
+                    Items["ColorpickerButton"]:Tween(TweenInfo.new(0.17, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundColor3 = self.Color})
+                    Items["Palette"]:Tween(TweenInfo.new(0.17, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundColor3 = FromHSV(self.Hue, 1, 1)})
+
+                    if not IsFromAlpha then 
+                        Items["Alpha"]:Tween(TweenInfo.new(0.17, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundColor3 = self.Color})
+                    end
                 end
 
                 if Data.Callback then 
@@ -1735,7 +2363,10 @@
                 local SlideX = MathClamp((Input.Position.X - Items["Palette"].Instance.AbsolutePosition.X) / Items["Palette"].Instance.AbsoluteSize.X, 0, 0.989)
                 local SlideY = MathClamp((Input.Position.Y - Items["Palette"].Instance.AbsolutePosition.Y) / Items["Palette"].Instance.AbsoluteSize.Y, 0, 0.989)
 
-                Items["PaletteDragger"]:Tween(TweenInfo.new(0.17, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = UDim2New(SlideX, 0, SlideY, 0)})
+                -- set position directly while sliding to avoid creating many tweens
+                if Items["PaletteDragger"] and Items["PaletteDragger"].Instance then
+                    Items["PaletteDragger"].Instance.Position = UDim2New(SlideX, 0, SlideY, 0)
+                end
                 self:Update()            
             end
 
@@ -1750,7 +2381,9 @@
 
                 local PositionY = MathClamp((Input.Position.Y - Items["Hue"].Instance.AbsolutePosition.Y) / Items["Hue"].Instance.AbsoluteSize.Y, 0, 0.994)
 
-                Items["HueDragger"]:Tween(TweenInfo.new(0.17, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = UDim2New(0, 0, PositionY, 0)})
+                if Items["HueDragger"] and Items["HueDragger"].Instance then
+                    Items["HueDragger"].Instance.Position = UDim2New(0, 0, PositionY, 0)
+                end
                 self:Update()
             end
 
@@ -1765,17 +2398,22 @@
 
                 local PositionX = MathClamp((Input.Position.X - Items["Alpha"].Instance.AbsolutePosition.X) / Items["Alpha"].Instance.AbsoluteSize.X, 0, 0.994)
 
-                Items["AlphaDragger"]:Tween(TweenInfo.new(0.17, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = UDim2New(PositionX, 0, 0, 0)})
+                if Items["AlphaDragger"] and Items["AlphaDragger"].Instance then
+                    Items["AlphaDragger"].Instance.Position = UDim2New(PositionX, 0, 0, 0)
+                end
                 self:Update(true)
             end
 
             Items["ColorpickerButton"]:Connect("MouseButton1Down", function()
-                Colorpicker:SetOpen(not Colorpicker.IsOpen)
+                task.defer(function()
+                    Colorpicker:SetOpen(not Colorpicker.IsOpen)
+                end)
             end)
 
             Items["Palette"]:Connect("InputBegan", function(Input)
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 then
                     SlidingPalette = true
+                    Colorpicker.SlidingPalette = true -- [OPTIMIZATION] for centralized handler
                     Colorpicker:SlidePalette(Input)
                 end
             end)
@@ -1783,12 +2421,14 @@
             Items["Palette"]:Connect("InputEnded", function(Input)
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 then
                     SlidingPalette = false
+                    Colorpicker.SlidingPalette = false
                 end
             end)
 
             Items["Hue"]:Connect("InputBegan", function(Input)
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 then
                     SlidingHue = true
+                    Colorpicker.SlidingHue = true
                     Colorpicker:SlideHue(Input)
                 end
             end)
@@ -1796,12 +2436,14 @@
             Items["Hue"]:Connect("InputEnded", function(Input)
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 then
                     SlidingHue = false
+                    Colorpicker.SlidingHue = false
                 end
             end)
 
             Items["Alpha"]:Connect("InputBegan", function(Input)
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 then
                     SlidingAlpha = true
+                    Colorpicker.SlidingAlpha = true
                     Colorpicker:SlideAlpha(Input)
                 end
             end)
@@ -1809,34 +2451,34 @@
             Items["Alpha"]:Connect("InputEnded", function(Input)
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 then
                     SlidingAlpha = false
+                    Colorpicker.SlidingAlpha = false
                 end
             end)
 
-            Library:Connect(UserInputService.InputChanged, function(Input)
-                if Input.UserInputType == Enum.UserInputType.MouseMovement then
-                    if SlidingPalette then
-                        Colorpicker:SlidePalette(Input)
-                    end
+            -- [OPTIMIZATION] Use centralized input handler instead of individual connection
+            Library:RegisterColorpicker(Colorpicker, {
+                palette = function(Input) Colorpicker:SlidePalette(Input) end,
+                hue = function(Input) Colorpicker:SlideHue(Input) end,
+                alpha = function(Input) Colorpicker:SlideAlpha(Input) end
+            })
 
-                    if SlidingHue then
-                        Colorpicker:SlideHue(Input)
-                    end
-
-                    if SlidingAlpha then
-                        Colorpicker:SlideAlpha(Input)
-                    end
-                end
-            end)
-
+            local cpConnName = "Colorpicker_Input_" .. HttpService:GenerateGUID(false)
             Library:Connect(UserInputService.InputBegan, function(Input)
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    if Library:IsMouseOverFrame(Items["ColorpickerWindow"]) then
+                    if not Colorpicker.IsOpen then return end
+
+                    -- ignore clicks on the colorpicker window or its opener button
+                    if Library:IsMouseOverFrame(Items["ColorpickerWindow"]) or Library:IsMouseOverFrame(Items["ColorpickerButton"]) then
                         return
                     end
 
                     Colorpicker:SetOpen(false)
                 end
-            end)
+            end, cpConnName)
+
+            if Items["ColorpickerWindow"] then
+                Items["ColorpickerWindow"]._InputConnName = cpConnName
+            end
 
             if Data.Default then 
                 Colorpicker:Set(Data.Default, Data.Alpha)
@@ -2038,7 +2680,7 @@
             function Keybind:SetOpen(Bool)
                 Keybind.IsOpen = Bool
 
-                if Bool then 
+                if Bool then
                     Debounce = true
                     Items["Window"].Instance.Visible = true
                     Items["Window"].Instance.ZIndex = 16
@@ -2046,21 +2688,35 @@
 
                     task.wait(0.1)
 
-                    for Index, Value in Items["Window"].Instance:GetDescendants() do 
-                        if Value:IsA("UIStroke") then
-                            Tween:Create(Value, nil, {Transparency = 0}, true)
-                        elseif Value:IsA("TextButton") then
-                            Tween:Create(Value, nil, {TextTransparency = 0}, true)
-                            Value.ZIndex = 16
+                    -- Only affect menu window elements, not the keybind text
+                    for Index, wrapper in pairs(Items) do
+                        if Index == "Text" or Index == "KeyButton" then continue end
+                        
+                        local Value = (wrapper and wrapper.Instance) or wrapper
+                        if not Value then continue end
+                        if Value:IsA("TextButton") or Value:IsA("TextLabel") then
+                            if Value:IsA("TextButton") then
+                                Value.TextTransparency = 0
+                                Value.ZIndex = 16
+                            else
+                                Value.TextTransparency = 0
+                            end
                         end
                     end
-                else 
-                    for Index, Value in Items["Window"].Instance:GetDescendants() do 
-                        if Value:IsA("UIStroke") then
-                            Tween:Create(Value, nil, {Transparency = 1}, true)
-                        elseif Value:IsA("TextButton") then
-                            Tween:Create(Value, nil, {TextTransparency = 1}, true)
-                            Value.ZIndex = 1
+                else
+                    -- Only affect menu window elements, not the keybind text
+                    for Index, wrapper in pairs(Items) do
+                        if Index == "Text" or Index == "KeyButton" then continue end
+                        
+                        local Value = (wrapper and wrapper.Instance) or wrapper
+                        if not Value then continue end
+                        if Value:IsA("TextButton") or Value:IsA("TextLabel") then
+                            if Value:IsA("TextButton") then
+                                Value.TextTransparency = 1
+                                Value.ZIndex = 1
+                            else
+                                Value.TextTransparency = 1
+                            end
                         end
                     end
 
@@ -2192,52 +2848,101 @@
                 Items["Text"]:Tween(nil, {TextColor3 = Library.Theme.Accent})
                 Items["Text"]:ChangeItemTheme({TextColor3 = "Accent"})
 
-                local InputBegan 
-                InputBegan = UserInputService.InputBegan:Connect(function(Input)
-                    if Input.UserInputType == Enum.UserInputType.Keyboard then 
-                        Keybind:Set(Input.KeyCode)
-                    else
-                        Keybind:Set(Input.UserInputType)
-                    end
+                local pickConnName = "Keybind_Pick_" .. Data.Flag .. "_" .. HttpService:GenerateGUID(false)
+                local pickTimeout
 
-                    InputBegan:Disconnect()
-                    InputBegan = nil
+                Library:Connect(UserInputService.InputBegan, function(Input)
+                    if pickTimeout then task.cancel(pickTimeout) end
+                    -- Only accept keyboard inputs, reject mouse buttons
+                    if Input.UserInputType == Enum.UserInputType.Keyboard then
+                        Keybind:Set(Input.KeyCode)
+                        Library:Disconnect(pickConnName)
+                        pickConnName = nil
+                    end
+                end, pickConnName)
+
+                pickTimeout = task.delay(15, function()
+                    if pickConnName then
+                        Library:Disconnect(pickConnName)
+                        pickConnName = nil
+                    end
+                    Keybind.Picking = false
+                    Items["Text"]:Tween(nil, {TextColor3 = Library.Theme.Text})
+                    Items["Text"]:ChangeItemTheme({TextColor3 = "Text"})
                 end)
+
+                if Items["KeyButton"] then
+                    Items["KeyButton"]._PickConnName = pickConnName
+                end
             end)
 
             Items["KeyButton"]:Connect("MouseButton2Down", function()
                 Keybind:SetOpen(not Keybind.IsOpen)
             end)
 
+            local kbBeginName = "Keybind_Begin_" .. (Data.Flag or HttpService:GenerateGUID(false))
             Library:Connect(UserInputService.InputBegan, function(Input)
-                if tostring(Input.KeyCode) == Keybind.Key or tostring(Input.UserInputType) == Keybind.Key then
-                    if Keybind.Mode == "Toggle" then 
+                -- Check if input matches the keybind (handles both KeyCode and UserInputType)
+                local inputMatches = false
+                if Input.KeyCode ~= Enum.KeyCode.Unknown then
+                    inputMatches = tostring(Input.KeyCode) == Keybind.Key
+                else
+                    inputMatches = tostring(Input.UserInputType) == Keybind.Key
+                end
+                
+                if inputMatches then
+                    if Keybind.Mode == "Toggle" then
                         Keybind:Press()
-                    elseif Keybind.Mode == "Hold" then 
+                    elseif Keybind.Mode == "Hold" then
                         Keybind:Press(true)
                     end
                 end
 
+                -- Only MouseButton1 should be able to close the menu
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    if not Keybind.IsOpen then return end
+
+                    -- If clicking on the keybind button itself, don't close the menu
+                    if Library:IsMouseOverFrame(Items["KeyButton"]) then
+                        return
+                    end
+
+                    -- If clicking inside the options window, don't close it
                     if Library:IsMouseOverFrame(Items["Window"]) then
                         return
                     end
 
-                    if Debounce then 
+                    if Debounce then
                         return
                     end
 
                     Keybind:SetOpen(false)
                 end
-            end)
+            end, kbBeginName)
 
+            local kbEndName = "Keybind_End_" .. (Data.Flag or HttpService:GenerateGUID(false))
             Library:Connect(UserInputService.InputEnded, function(Input)
-                if tostring(Input.KeyCode) == Keybind.Key or tostring(Input.UserInputType) == Keybind.Key then
-                    if Keybind.Mode == "Hold" then 
+                -- Check if input matches the keybind (handles both KeyCode and UserInputType)
+                local inputMatches = false
+                if Input.KeyCode ~= Enum.KeyCode.Unknown then
+                    inputMatches = tostring(Input.KeyCode) == Keybind.Key
+                else
+                    inputMatches = tostring(Input.UserInputType) == Keybind.Key
+                end
+                
+                if inputMatches then
+                    if Keybind.Mode == "Hold" then
                         Keybind:Press(false)
                     end
                 end
-            end)
+            end, kbEndName)
+
+            -- store connection names and flag for cleanup
+            if Items["KeyButton"] then
+                Items["KeyButton"]._InputConnName = kbBeginName
+                Items["KeyButton"]._InputConnName2 = kbEndName
+                Items["KeyButton"]._FlagName = Data.Flag
+            end
 
             Items["Toggle"]:Connect("MouseButton1Down", function()
                 Keybind.Mode = "Toggle"
@@ -2273,7 +2978,7 @@
 
             local Window = {
                 Name = Data.Name or Data.name or "Window",
-                Size = Data.Size or Data.size or UDim2New(0, 500, 0, 600),
+                Size = Data.Size or Data.size or UDim2New(0, 615, 0, 639),
 
                 FadeSpeed = Data.FadeSpeed or Data.fadespeed or 0.25,
 
@@ -2390,49 +3095,37 @@
             local Debounce = false
 
             function Window:SetOpen(Bool)
-                if Debounce then 
-                    return 
+                if Debounce then
+                    return
                 end
 
                 Window.IsOpen = Bool
+                Debounce = true
 
-                Debounce = true 
-
-                if Bool then 
-                    Items["MainFrame"].Instance.Visible = true
-                end
-
-                local Descendants = Items["MainFrame"].Instance:GetDescendants()
-                TableInsert(Descendants, Items["MainFrame"].Instance)
-
-                local NewTween
-                for Index, Value in Descendants do 
-                    local ValueIndex = Library:GetTransparencyPropertyFromItem(Value)
-
-                    if not ValueIndex then 
-                        continue
-                    end
-
-                    if type(ValueIndex) == "table" then
-                        for _, Property in ValueIndex do 
-                            NewTween = Library:FadeItem(Value, Property, Bool, 0)
-                        end
-                    else
-                        NewTween = Library:FadeItem(Value, ValueIndex, Bool, 0)
-                    end
-                end
-
-                Library:Connect(NewTween.Tween.Completed, function()
-                    Debounce = false
+                -- Instant show/hide: toggle visibility on the main frame only
+                if Items and Items["MainFrame"] and Items["MainFrame"].Instance then
                     Items["MainFrame"].Instance.Visible = Bool
-                end)
+                end
+
+                Debounce = false
             end
 
+            local menuConnName = "Window_MenuKeybind_" .. HttpService:GenerateGUID(false)
             Library:Connect(UserInputService.InputBegan, function(Input)
-                if tostring(Input.KeyCode) == Library.MenuKeybind or tostring(Input.UserInputType) == Library.MenuKeybind then
+                -- Check if input matches the menu keybind (handles both KeyCode and UserInputType)
+                local inputMatches = false
+                if Input.KeyCode ~= Enum.KeyCode.Unknown then
+                    inputMatches = tostring(Input.KeyCode) == Library.MenuKeybind
+                else
+                    inputMatches = tostring(Input.UserInputType) == Library.MenuKeybind
+                end
+                
+                if inputMatches then
                     Window:SetOpen(not Window.IsOpen)
                 end
-            end)
+            end, menuConnName)
+            -- store so Instances.Clean can disconnect this window-specific handler
+            Window._MenuConnName = menuConnName
 
             Window.Elements = Items
 
@@ -2636,6 +3329,10 @@
                     return 
                 end
 
+                if Page.Active == Bool then
+                    return
+                end
+
                 Page.Active = Bool
 
                 Debounce = true 
@@ -2654,30 +3351,8 @@
                     Items["Text"]:ChangeItemTheme({TextColor3 = "Text"})
                 end
 
-                local Descendants = Items["Page"].Instance:GetDescendants()
-                TableInsert(Descendants, Items["Page"].Instance)
-
-                local NewTween
-                for Index, Value in Descendants do 
-                    local ValueIndex = Library:GetTransparencyPropertyFromItem(Value)
-
-                    if not ValueIndex then 
-                        continue
-                    end
-
-                    if type(ValueIndex) == "table" then
-                        for _, Property in ValueIndex do 
-                            NewTween = Library:FadeItem(Value, Property, Bool, 0)
-                        end
-                    else
-                        NewTween = Library:FadeItem(Value, ValueIndex, Bool, 0)
-                    end
-                end
-
-                Library:Connect(NewTween.Tween.Completed, function()
-                    Debounce = false
-                    Items["Page"].Instance.Visible = Bool
-                end)
+                Items["Page"].Instance.Visible = Bool
+                Debounce = false
             end
 
             Items["Inactive"]:Connect("MouseButton1Down", function()
@@ -2864,6 +3539,10 @@
                     return 
                 end
 
+                if SubPage.Active == Bool then
+                    return
+                end
+
                 SubPage.Active = Bool
 
                 Debounce = true 
@@ -2885,30 +3564,8 @@
                     Items["Inactive"].Instance.Size = UDim2New(1, 0, 1, -2)
                 end
 
-                local Descendants = Items["Subtab"].Instance:GetDescendants()
-                TableInsert(Descendants, Items["Subtab"].Instance)
-
-                local NewTween
-                for Index, Value in Descendants do 
-                    local ValueIndex = Library:GetTransparencyPropertyFromItem(Value)
-
-                    if not ValueIndex then 
-                        continue
-                    end
-
-                    if type(ValueIndex) == "table" then
-                        for _, Property in ValueIndex do 
-                            NewTween = Library:FadeItem(Value, Property, Bool, 0)
-                        end
-                    else
-                        NewTween = Library:FadeItem(Value, ValueIndex, Bool, 0)
-                    end
-                end
-
-                Library:Connect(NewTween.Tween.Completed, function()
-                    Debounce = false
-                    Items["Subtab"].Instance.Visible = Bool
-                end)
+                Items["Subtab"].Instance.Visible = Bool
+                Debounce = false
             end
 
             Items["Inactive"]:Connect("MouseButton1Down", function()
@@ -3246,11 +3903,17 @@
                         SubItems["Text"]:ChangeItemTheme({TextColor3 = "Text"})
                     end
 
-                    local Descendants = SubItems["Content"].Instance:GetDescendants()
+                    -- iterate known SubItems to avoid traversing full descendant tree
+                    local Descendants = {}
+                    for _, wrapper in pairs(SubItems) do
+                        if wrapper and wrapper.Instance then
+                            TableInsert(Descendants, wrapper.Instance)
+                        end
+                    end
                     TableInsert(Descendants, SubItems["Content"].Instance)
 
                     local NewTween
-                    for Index, Value in Descendants do 
+                    for Index, Value in ipairs(Descendants) do 
                         local ValueIndex = Library:GetTransparencyPropertyFromItem(Value)
 
                         if not ValueIndex then 
@@ -3266,10 +3929,12 @@
                         end
                     end
 
+                    local connName = "TweenDone_" .. HttpService:GenerateGUID(false)
                     Library:Connect(NewTween.Tween.Completed, function()
+                        Library:Disconnect(connName)
                         Debounce = false
                         SubItems["Content"].Instance.Visible = Bool
-                    end)
+                    end, connName)
                 end
 
                 SubItems["Inactive"]:Connect("MouseButton1Down", function()
@@ -3565,6 +4230,8 @@
                     Items["Indicator"]:ChangeItemTheme({BackgroundColor3 = "Element", BorderColor3 = "Border"})
                 end)
             end
+            -- store flag reference for cleanup
+            Items["Toggle"]._FlagName = Toggle.Flag
             
             function Toggle:Get()
                 return Toggle.Value
@@ -3912,7 +4579,14 @@
                     Items["Value"].Instance.Text = `{Slider.Value}{Slider.Suffix}`
                 end
 
-                Items["Indicator"]:Tween(TweenInfo.new(0.17, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2New((Slider.Value - Slider.Min) / (Slider.Max - Slider.Min), 0, 1, 0)})
+                local newSize = UDim2New((Slider.Value - Slider.Min) / (Slider.Max - Slider.Min), 0, 1, 0)
+                if Slider.Sliding then
+                    if Items["Indicator"] and Items["Indicator"].Instance then
+                        Items["Indicator"].Instance.Size = newSize
+                    end
+                else
+                    Items["Indicator"]:Tween(TweenInfo.new(0.17, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = newSize})
+                end
 
                 if Slider.Callback then 
                     Library:SafeCall(Slider.Callback, Slider.Value)
@@ -3944,15 +4618,12 @@
                 end
             end)
 
-            Library:Connect(UserInputService.InputChanged, function(Input)
-                if Input.UserInputType == Enum.UserInputType.MouseMovement and Slider.Sliding then
-                    local MousePos = UserInputService:GetMouseLocation()
-
-                    local SizeX = (MousePos.X - Items["RealSlider"].Instance.AbsolutePosition.X) / Items["RealSlider"].Instance.AbsoluteSize.X
-                    local Value = ((Slider.Max - Slider.Min) * SizeX) + Slider.Min
-
-                    Slider:Set(Value)
-                end
+            -- [OPTIMIZATION] Use centralized input handler instead of individual connection
+            Library:RegisterSlider(Slider, function(Input)
+                local MousePos = UserInputService:GetMouseLocation()
+                local SizeX = (MousePos.X - Items["RealSlider"].Instance.AbsolutePosition.X) / Items["RealSlider"].Instance.AbsoluteSize.X
+                local Value = ((Slider.Max - Slider.Min) * SizeX) + Slider.Min
+                Slider:Set(Value)
             end)
 
             if Slider.Default then
@@ -4090,7 +4761,7 @@
                     Name = "\0"
                 }):AddToTheme({Color = "Text Border"})
                 
-                Items["OptionHolder"] = Instances:Create("Frame", {
+                Items["OptionHolder"] = Instances:Create("ScrollingFrame", {
                     Parent = Items["Dropdown"].Instance,
                     Visible = false,
                     BorderColor3 = FromRGB(10, 10, 10),
@@ -4099,8 +4770,13 @@
                     Size = UDim2New(1, 0, 0, 0),
                     BorderSizePixel = 2,
                     AutomaticSize = Enum.AutomaticSize.Y,
+                    ScrollBarImageColor3 = FromRGB(235, 157, 255),
+                    ScrollBarThickness = 2,
+                    Active = true,
+                    ClipsDescendants = true,
+                    CanvasSize = UDim2New(0, 0, 0, 0),
                     BackgroundColor3 = FromRGB(20, 20, 25)
-                })  Items["OptionHolder"]:AddToTheme({BackgroundColor3 = "Inline", BorderColor3 = "Border"})
+                })  Items["OptionHolder"]:AddToTheme({BackgroundColor3 = "Inline", BorderColor3 = "Border", ScrollBarImageColor3 = "Accent"})
                 
                 Instances:Create("UIStroke", {
                     Parent = Items["OptionHolder"].Instance,
@@ -4110,10 +4786,25 @@
                     Color = FromRGB(27, 27, 32)
                 }):AddToTheme({Color = "Outline"})
 
-                Instances:Create("UIListLayout", {
+                local listLayout = Instances:Create("UIListLayout", {
                     Parent = Items["OptionHolder"].Instance,
                     SortOrder = Enum.SortOrder.LayoutOrder
-                }) 
+                })
+
+                local layoutConnName = "Dropdown_Layout_" .. HttpService:GenerateGUID(false)
+                Library:Connect(listLayout.Instance:GetPropertyChangedSignal("AbsoluteContentSize"), function()
+                    Items["OptionHolder"].Instance.CanvasSize = UDim2New(0, 0, 0, listLayout.Instance.AbsoluteContentSize.Y + 2)
+                end, layoutConnName)
+                -- store on wrapper so Instances.Clean can remove the named connection
+                if Items["Dropdown"] then
+                    Items["Dropdown"]._LayoutConnName = layoutConnName
+                end
+
+
+                Instances:Create("UISizeConstraint", {
+                    Parent = Items["OptionHolder"].Instance,
+                    MaxSize = Vector2New(9999, 150)
+                })
                 
                 Instances:Create("UIPadding", {
                     Parent = Items["OptionHolder"].Instance,
@@ -4130,6 +4821,9 @@
                     Items["RealDropdown"]:ChangeItemTheme({BackgroundColor3 = "Background", BorderColor3 = "Border"})
                 end)
             end
+
+            -- store flag for cleanup
+            Items["Dropdown"]._FlagName = Dropdown.Flag
 
             function Dropdown:Set(Option)
                 if Dropdown.Multi then 
@@ -4324,41 +5018,69 @@
             local Debounce = false
 
             function Dropdown:SetOpen(Bool)
-                if Debounce then 
-                    return 
+                if Debounce then
+                    return
                 end
 
                 Dropdown.IsOpen = Bool
 
-                Debounce = true 
+                Debounce = true
 
-                if Bool then 
+                if Bool then
                     Items["OptionHolder"].Instance.Visible = true
                     Items["OptionHolder"].Instance.ZIndex = 15
                     Items["Open"].Instance.Text = "-"
                     Items["Open"].Instance.Position = UDim2New(0, -5, 0, -1)
+                    
+                    -- Also update ZIndex for all children of OptionHolder
+                    for _, child in ipairs(Items["OptionHolder"].Instance:GetDescendants()) do
+                        -- Skip UI objects that don't have ZIndex property
+                        local success = pcall(function()
+                            child.ZIndex = 15
+                        end)
+                    end
                 else
                     Items["Open"].Instance.Text = "+"
                     Items["Open"].Instance.Position = UDim2New(0, -4, 0, -1)
+                    
+                    -- Also update ZIndex for all children of OptionHolder when closing
+                    for _, child in ipairs(Items["OptionHolder"].Instance:GetDescendants()) do
+                        local success = pcall(function()
+                            child.ZIndex = 1
+                        end)
+                    end
                 end
 
-                local Descendants = Items["OptionHolder"].Instance:GetDescendants()
-                TableInsert(Descendants, Items["OptionHolder"].Instance)
+                -- iterate known Items to avoid traversing whole descendant tree
+                local Descendants = {}
+                for Index, wrapper in pairs(Items) do
+                    -- Skip OptionHolder from fade animation but set its ZIndex
+                    if Index == "OptionHolder" then
+                        if wrapper and wrapper.Instance then
+                            wrapper.Instance.ZIndex = Bool and 15 or 1
+                        end
+                        continue
+                    end
+                    
+                    if wrapper and wrapper.Instance then
+                        TableInsert(Descendants, wrapper.Instance)
+                    end
+                end
 
                 local NewTween
-                for Index, Value in Descendants do 
+                for Index, Value in ipairs(Descendants) do
                     local ValueIndex = Library:GetTransparencyPropertyFromItem(Value)
 
-                    if not ValueIndex then 
+                    if not ValueIndex then
                         continue
                     end
 
-                    if not StringFind(Value.ClassName, "UI") then 
+                    if not StringFind(Value.ClassName, "UI") then
                         Value.ZIndex = Bool and 15 or 1
                     end
 
                     if type(ValueIndex) == "table" then
-                        for _, Property in ValueIndex do 
+                        for _, Property in ValueIndex do
                             NewTween = Library:FadeItem(Value, Property, Bool, Dropdown.Window.FadeSpeed)
                         end
                     else
@@ -4366,11 +5088,26 @@
                     end
                 end
 
-                Library:Connect(NewTween.Tween.Completed, function()
+                if NewTween and NewTween.Tween and NewTween.Tween.Completed then
+                    local connName = "TweenDone_" .. HttpService:GenerateGUID(false)
+                    Library:Connect(NewTween.Tween.Completed, function()
+                        Library:Disconnect(connName)
+                        Debounce = false
+                        Items["OptionHolder"].Instance.Visible = Bool
+                        Items["OptionHolder"].Instance.ZIndex = Bool and 15 or 1
+                        
+                        -- Update ZIndex for all children of OptionHolder
+                        for _, child in ipairs(Items["OptionHolder"].Instance:GetDescendants()) do
+                            pcall(function()
+                                child.ZIndex = Bool and 15 or 1
+                            end)
+                        end
+                    end, connName)
+                else
                     Debounce = false
                     Items["OptionHolder"].Instance.Visible = Bool
                     Items["OptionHolder"].Instance.ZIndex = Bool and 15 or 1
-                end)
+                end
             end
 
             for Index, Value in Dropdown.Items do 
@@ -4605,6 +5342,9 @@
                 end)
             end
 
+            -- store flag for cleanup
+            Items["Textbox"]._FlagName = Textbox.Flag
+
             function Textbox:Get()
                 return Textbox.Value
             end
@@ -4716,6 +5456,9 @@
                     PaddingTop = UDimNew(0, 2)
                 }) 
             end
+
+            -- store flag for cleanup
+            Items["Listbox"]._FlagName = Listbox.Flag
 
             function Listbox:Set(Option)
                 if Listbox.Multi then 

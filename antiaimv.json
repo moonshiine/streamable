@@ -5,7 +5,7 @@
     "RemoteParent": "ReplicatedStorage",
     "ArgName": "UpdateMousePosI2",
     "UseOldSystem": false,
-    "NeedAimviewer": false,
+    "NeedAimviewer": true,
     "Adonis": false
   },
   "7213786345": {
@@ -14,7 +14,7 @@
     "RemoteParent": "ReplicatedStorage",
     "ArgName": "UpdateMousePosI2",
     "UseOldSystem": false,
-    "NeedAimviewer": false,
+    "NeedAimviewer": true,
     "Adonis": false
   },
   "9825515356": {

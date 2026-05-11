@@ -1,5 +1,5 @@
 --hola
---tysm cp7
+--tysm cp77
     --[[
         Made by samet
     --Yep, if you're reading this, it's just the gui library, and before you complain or anything, it was already leaked!
@@ -3700,6 +3700,14 @@
 
             Section.Elements = Items
 
+            function Section:Destroy()
+                if self.Elements and self.Elements.Section then
+                    if self.Elements.Section.Clean then
+                        self.Elements.Section:Clean()
+                    end
+                end
+            end
+
             return setmetatable(Section, Library.Sections)
         end
 
@@ -4106,6 +4114,14 @@
             end
 
             Section.Elements = Items
+
+            function Section:Destroy()
+                if self.Elements and self.Elements.Section then
+                    if self.Elements.Section.Clean then
+                        self.Elements.Section:Clean()
+                    end
+                end
+            end
 
             return setmetatable(Section, Library.Sections)
         end

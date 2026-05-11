@@ -194,8 +194,9 @@ local Watermark = API.UI.Library:Watermark("Moonshine Addon System")
 Watermark:SetVisibility(true)
 ```
 
+## 5. Example
 
-### Example chido
+### simple esp
 
 ```lua
 local API = getgenv().MoonshineAPI

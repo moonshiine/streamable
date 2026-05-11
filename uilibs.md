@@ -194,7 +194,7 @@ local Watermark = API.UI.Library:Watermark("Moonshine Addon System")
 Watermark:SetVisibility(true)
 ```
 
-## 5. Example
+## 6. Example
 
 ### simple esp
 

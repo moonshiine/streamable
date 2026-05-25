@@ -1,4 +1,4 @@
---hola
+--hola 67
 --tysm cp77
     --[[
         Made by samet
@@ -373,25 +373,13 @@
         end
 
         -- Download drag image for drag ghost (only if not already in workspace)
-        if not isfile("1.webp") then
+        if not isfile("67.webp") then
             local success = pcall(function()
-                local encoded = game:HttpGet("https://raw.githubusercontent.com/moonshiine/streamable/main/img/1")
-                writefile("1.webp", base64decode(encoded))
+                local encoded = game:HttpGet("https://raw.githubusercontent.com/moonshiine/streamable/refs/heads/main/img/best")
+                writefile("67.webp", base64decode(encoded))
             end)
-        end
-        if not isfile("2.webp") then
-            pcall(function()
-                local encoded = game:HttpGet("https://raw.githubusercontent.com/moonshiine/streamable/refs/heads/main/img/2")
-                writefile("2.webp", base64decode(encoded))
-            end)
-        end
-        if not isfile("3.webp") then
-            pcall(function()
-                local encoded = game:HttpGet("https://raw.githubusercontent.com/moonshiine/streamable/refs/heads/main/img/3")
-                writefile("3.webp", base64decode(encoded))
-            end)
-        end
-
+        end     
+            
         for _, ImageData in Library.Images do
             local ImageName = ImageData[1]
             local ImageLink = ImageData[2]
@@ -879,17 +867,8 @@
                             -- Try to load custom asset for drag image
                             local success, result = pcall(function()
                                 if getcustomasset then
-                                    local rand = math.random()
-                                    local imgFile
-                                    if rand < 0.10 and isfile("2.webp") then
-                                        imgFile = "2.webp"
-                                    elseif rand < 0.18 and isfile("3.webp") then
-                                        imgFile = "3.webp"
-                                    elseif isfile("1.webp") then
-                                        imgFile = "1.webp"
-                                    end
-                                    if imgFile then
-                                        local asset = getcustomasset(imgFile)
+                                    if isfile("67.webp") then
+                                        local asset = getcustomasset("67.webp")
                                         if asset then
                                             DragImage.Instance.Image = asset
                                         end

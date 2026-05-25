@@ -1,4 +1,4 @@
---hola 67
+--hola
 --tysm cp77
     --[[
         Made by samet
@@ -149,12 +149,22 @@
     end
 
     local Library do
-        local UserInputService = game:GetService("UserInputService")
-        local Players = game:GetService("Players")
-        local Workspace = game:GetService("Workspace")
-        local HttpService = game:GetService("HttpService")
-        local TweenService = game:GetService("TweenService")
-        local CoreGui = cloneref and cloneref(game:GetService("CoreGui")) or game:GetService("CoreGui")
+        local function CloneRef(value)
+            if cloneref and typeof(value) == "Instance" then
+                local ok, cloned = pcall(cloneref, value)
+                if ok and cloned then
+                    return cloned
+                end
+            end
+            return value
+        end
+
+        local UserInputService = CloneRef(game:GetService("UserInputService"))
+        local Players = CloneRef(game:GetService("Players"))
+        local Workspace = CloneRef(game:GetService("Workspace"))
+        local HttpService = CloneRef(game:GetService("HttpService"))
+        local TweenService = CloneRef(game:GetService("TweenService"))
+        local CoreGui = CloneRef(game:GetService("CoreGui"))
 
         gethui = gethui or function()
             return CoreGui

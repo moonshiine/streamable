@@ -1,4 +1,4 @@
---hola
+--hola cloneref + opti
 --tysm cp77
     --[[
         Made by samet
@@ -1371,35 +1371,43 @@
         end
 
         Library.GetConfig = function(self)
-            local Config = { } 
+            local Config = { }
 
-            local Success, Result = Library:SafeCall(function()
-                for Index, Value in Library.Flags do 
+            local Success, Result = pcall(function()
+                for Index, Value in pairs(Library.Flags) do
                     if type(Value) == "table" and Value.Key then
                         Config[Index] = {Key = tostring(Value.Key), Mode = Value.Mode}
                     elseif type(Value) == "table" and Value.Color then
-                        Config[Index] = {Color = "#" .. Value.HexValue, Alpha = Value.Alpha}
+                        Config[Index] = {Color = "#" .. (Value.HexValue or "ffffff"), Alpha = Value.Alpha}
                     else
                         Config[Index] = Value
                     end
                 end
+                return HttpService:JSONEncode(Config)
             end)
 
-            return HttpService:JSONEncode(Config)
+            return Success and Result or "{}"
         end
 
         Library.LoadConfig = function(self, Config)
-            local Decoded = HttpService:JSONDecode(Config)
+            local success_decode, Decoded = pcall(function()
+                return HttpService:JSONDecode(Config)
+            end)
 
-            local Success, Result = Library:SafeCall(function()
-                for Index, Value in Decoded do 
+            if not success_decode then
+                Library:Notification("Failed to decode config JSON", 5, Color3.fromRGB(255, 0, 0))
+                return
+            end
+
+            local Success, Result = pcall(function()
+                for Index, Value in pairs(Decoded) do
                     local SetFunction = Library.SetFlags[Index]
 
                     if not SetFunction then
                         continue
                     end
 
-                    if type(Value) == "table" and Value.Key then 
+                    if type(Value) == "table" and Value.Key then
                         SetFunction(Value)
                     elseif type(Value) == "table" and Value.Color then
                         SetFunction(Value.Color, Value.Alpha)
@@ -1409,25 +1417,33 @@
                 end
             end)
 
-            if Success then 
-                Library:Notification("Successfully loaded config", 5, Color3.fromRGB(0, 255, 0))
+            if not Success then
+                Library:Notification("Error applying config: " .. tostring(Result), 5, Color3.fromRGB(255, 0, 0))
             end
         end
 
         Library.DeleteConfig = function(self, Config)
-            if isfile(Library.Folders.Configs .. "/" .. Config) then 
-                delfile(Library.Folders.Configs .. "/" .. Config)
-                Library:Notification("Deleted config " .. Config .. ".json", 5, Color3.fromRGB(0, 255, 0))
+            local Path = Library.Folders.Configs .. "/" .. Config
+            if isfile(Path) then
+                delfile(Path)
+                Library:Notification("Deleted config: " .. Config, 5, Color3.fromRGB(0, 255, 0))
             end
         end
 
         Library.SaveConfig = function(self, Config)
-            if isfile(Library.Folders.Directory .. "/" .. Library.Folders.Configs .. "/" .. Config .. ".json") then
-                writefile(Library.Folders.Directory .. "/" .. Library.Folders.Configs .. "/" .. Config .. ".json", Library:GetConfig())
-                Library:Notification("Saved config " .. Config .. ".json", 5, Color3.fromRGB(0, 255, 0))
+            local Path = Library.Folders.Configs .. "/" .. Config
+            if not Path:match("%.json$") then Path = Path .. ".json" end
+
+            local success, err = pcall(function()
+                writefile(Path, Library:GetConfig())
+            end)
+
+            if success then
+                Library:Notification("Saved config: " .. Config, 5, Color3.fromRGB(0, 255, 0))
+            else
+                Library:Notification("Save error: " .. tostring(err), 5, Color3.fromRGB(255, 0, 0))
             end
         end
-
         Library.RefreshConfigsList = function(self, Element)
             local CurrentList = { }
             local List = { }
@@ -1467,8 +1483,22 @@
 
         Library.ChangeTheme = function(self, Theme, Color)
             self.Theme[Theme] = Color
-            for _, entry in ipairs(self.ThemeIndex and self.ThemeIndex[Theme] or {}) do
-                if entry.Item then entry.Item[entry.Property] = Color end
+            local entries = self.ThemeIndex and self.ThemeIndex[Theme] or {}
+            
+            -- Throttled theme update to avoid micro-freezes if many items exist
+            if #entries > 100 then
+                task.spawn(function()
+                    for i, entry in ipairs(entries) do
+                        if entry.Item then 
+                            entry.Item[entry.Property] = Color 
+                        end
+                        if i % 50 == 0 then task.wait() end -- Process in chunks
+                    end
+                end)
+            else
+                for _, entry in ipairs(entries) do
+                    if entry.Item then entry.Item[entry.Property] = Color end
+                end
             end
         end
 
@@ -3356,11 +3386,25 @@
                     Items["Hide"].Instance.Visible = true
 
                     Items["Text"]:ChangeItemTheme({TextColor3 = "Accent"})
+                    
+                    -- Re-enable interactive elements for performance
+                    for _, col in pairs(Page.ColumnsData or {}) do
+                        if col and col.Instance then
+                            col.Instance.Active = true
+                        end
+                    end
                 else
                     Items["Text"]:Tween(nil, {TextColor3 = Library.Theme.Text, TextTransparency = 0.5})
                     Items["Hide"].Instance.Visible = false
 
                     Items["Text"]:ChangeItemTheme({TextColor3 = "Text"})
+                    
+                    -- Disable interactive elements when hidden to save engine resources
+                    for _, col in pairs(Page.ColumnsData or {}) do
+                        if col and col.Instance then
+                            col.Instance.Active = false
+                        end
+                    end
                 end
 
                 Items["Page"].Instance.Visible = Bool

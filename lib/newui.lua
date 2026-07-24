@@ -1,4 +1,4 @@
---hola cloneref + opti + mob
+--hola cloneref + opti
 --tysm cp77
     --[[
         Made by samet
@@ -3023,7 +3023,7 @@
 
             local Window = {
                 Name = Data.Name or Data.name or "Window",
-                Size = Library.Mobile and UDim2New(0, 307, 0, 319) or UDim2New(0, 615, 0, 639),
+                Size = Library.Mobile and UDim2New(0, 400, 0, 400) or UDim2New(0, 615, 0, 639),
 
                 FadeSpeed = Data.FadeSpeed or Data.fadespeed or 0.25,
 
@@ -3100,30 +3100,8 @@
                         end
                     end, mobileDragEndConnName)
                     Window._MobileDragEndConnName = mobileDragEndConnName
-
-                    Items["MobileButton"] = Instances:Create("TextButton", {
-                        Parent = Library.Holder.Instance,
-                        Name = "MobileToggleButton",
-                        AnchorPoint = Vector2New(1, 1),
-                        Position = UDim2New(1, -16, 1, -16),
-                        Size = UDim2New(0, 48, 0, 48),
-                        BackgroundColor3 = Library.Theme.Element,
-                        BorderColor3 = Library.Theme.Border,
-                        BorderSizePixel = 2,
-                        TextColor3 = Library.Theme.Text,
-                        FontFace = Library.Font,
-                        Text = "☰",
-                        TextSize = 26,
-                        AutoButtonColor = true,
-                        ZIndex = 1000
-                    })
-                    Items["MobileButton"]:AddToTheme({BackgroundColor3 = "Element", BorderColor3 = "Border", TextColor3 = "Text"})
-
-                    local mobileButtonConnName = "Window_MobileButton_" .. HttpService:GenerateGUID(false)
-                    Library:Connect(Items["MobileButton"].Instance.Activated, function()
-                        Window:SetOpen(not Window.IsOpen)
-                    end, mobileButtonConnName)
-                    Window._MobileButtonConnName = mobileButtonConnName
+                    -- Mobile toggle button removed: mobile_panel.lua provides its own
+                    -- "Toggle Menu" button, so the library's ☰ button is redundant.
                 end
                 
                 Items["AccentBorder"] = Instances:Create("UIStroke", {

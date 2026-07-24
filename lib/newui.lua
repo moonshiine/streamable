@@ -1,4 +1,4 @@
---hola cloneref + opti test
+--hola cloneref + opti2
 --tysm cp77
     --[[
         Made by samet
@@ -3057,6 +3057,14 @@
 
                 if Library.Mobile then
                     local MainFrame = Items["MainFrame"].Instance
+                    local WindowWidth = Window.Size.X.Offset
+                    local WindowHeight = Window.Size.Y.Offset
+                    local MobileScale = Instances:Create("UIScale", {
+                        Parent = MainFrame,
+                        Name = "MobileScale",
+                        Scale = 1
+                    })
+                    Items["MobileScale"] = MobileScale
 
                     local function ClampMobilePosition()
                         local Viewport = Camera.ViewportSize
@@ -3070,7 +3078,20 @@
                         MainFrame.Position = UDim2New(0, CenterX, 0, CenterY)
                     end
 
-                    ClampMobilePosition()
+                    local function UpdateMobileLayout()
+                        local Viewport = Camera.ViewportSize
+                        local Margin = 30
+                        local WidthScale = (Viewport.X - Margin) / WindowWidth
+                        local HeightScale = (Viewport.Y - Margin) / WindowHeight
+                        MobileScale.Instance.Scale = MathClamp(math.min(WidthScale, HeightScale, 0.82), 0.35, 0.82)
+                        ClampMobilePosition()
+                    end
+
+                    UpdateMobileLayout()
+
+                    local mobileLayoutConnName = "Window_MobileLayout_" .. HttpService:GenerateGUID(false)
+                    Library:Connect(Camera:GetPropertyChangedSignal("ViewportSize"), UpdateMobileLayout, mobileLayoutConnName)
+                    Window._MobileLayoutConnName = mobileLayoutConnName
 
                     local mobileDragEndConnName = "Window_MobileDragEnd_" .. HttpService:GenerateGUID(false)
                     Library:Connect(UserInputService.InputEnded, function(Input)
@@ -3079,6 +3100,30 @@
                         end
                     end, mobileDragEndConnName)
                     Window._MobileDragEndConnName = mobileDragEndConnName
+
+                    Items["MobileButton"] = Instances:Create("TextButton", {
+                        Parent = Library.Holder.Instance,
+                        Name = "MobileToggleButton",
+                        AnchorPoint = Vector2New(1, 1),
+                        Position = UDim2New(1, -16, 1, -16),
+                        Size = UDim2New(0, 48, 0, 48),
+                        BackgroundColor3 = Library.Theme.Element,
+                        BorderColor3 = Library.Theme.Border,
+                        BorderSizePixel = 2,
+                        TextColor3 = Library.Theme.Text,
+                        FontFace = Library.Font,
+                        Text = "☰",
+                        TextSize = 26,
+                        AutoButtonColor = true,
+                        ZIndex = 1000
+                    })
+                    Items["MobileButton"]:AddToTheme({BackgroundColor3 = "Element", BorderColor3 = "Border", TextColor3 = "Text"})
+
+                    local mobileButtonConnName = "Window_MobileButton_" .. HttpService:GenerateGUID(false)
+                    Library:Connect(Items["MobileButton"].Instance.Activated, function()
+                        Window:SetOpen(not Window.IsOpen)
+                    end, mobileButtonConnName)
+                    Window._MobileButtonConnName = mobileButtonConnName
                 end
                 
                 Items["AccentBorder"] = Instances:Create("UIStroke", {

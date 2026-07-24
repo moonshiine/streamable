@@ -1,4 +1,4 @@
---hola cloneref + opti
+--hola cloneref + opti test
 --tysm cp77
     --[[
         Made by samet
@@ -174,18 +174,7 @@
         local Camera = Workspace.CurrentCamera
         local Mouse = LocalPlayer:GetMouse()
 
-        local MobileMode = false
-        do
-            local Success, Environment = pcall(function()
-                if type(getgenv) == "function" then
-                    return getgenv()
-                end
-            end)
-
-            if Success and type(Environment) == "table" then
-                MobileMode = Environment.mobile == true
-            end
-        end
+        local MobileMode = getgenv().mobile == true
 
         local FromRGB = Color3.fromRGB
         local FromHSV = Color3.fromHSV

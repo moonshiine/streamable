@@ -1,4 +1,4 @@
---hola cloneref + opti2
+--hola cloneref + opti + mob
 --tysm cp77
     --[[
         Made by samet
@@ -3023,7 +3023,7 @@
 
             local Window = {
                 Name = Data.Name or Data.name or "Window",
-                Size = Library.Mobile and UDim2New(0, 615, 0, 639) or (Data.Size or Data.size or UDim2New(0, 615, 0, 639)),
+                Size = Library.Mobile and UDim2New(0, 307, 0, 319) or UDim2New(0, 615, 0, 639),
 
                 FadeSpeed = Data.FadeSpeed or Data.fadespeed or 0.25,
 

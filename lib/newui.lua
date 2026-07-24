@@ -174,6 +174,19 @@
         local Camera = Workspace.CurrentCamera
         local Mouse = LocalPlayer:GetMouse()
 
+        local MobileMode = false
+        do
+            local Success, Environment = pcall(function()
+                if type(getgenv) == "function" then
+                    return getgenv()
+                end
+            end)
+
+            if Success and type(Environment) == "table" then
+                MobileMode = Environment.mobile == true
+            end
+        end
+
         local FromRGB = Color3.fromRGB
         local FromHSV = Color3.fromHSV
         local FromHex = Color3.fromHex
@@ -220,6 +233,7 @@
 
         Library = {
             Flags = { },
+            Mobile = MobileMode,
             
             Theme = {
             ["Background"] = FromRGB(15, 15, 15),
@@ -3020,7 +3034,7 @@
 
             local Window = {
                 Name = Data.Name or Data.name or "Window",
-                Size = Data.Size or Data.size or UDim2New(0, 615, 0, 639),
+                Size = Library.Mobile and UDim2New(0, 615, 0, 639) or (Data.Size or Data.size or UDim2New(0, 615, 0, 639)),
 
                 FadeSpeed = Data.FadeSpeed or Data.fadespeed or 0.25,
 
@@ -3034,19 +3048,49 @@
             local Items = { } do 
                 Items["MainFrame"] = Instances:Create("Frame", {
                     Parent = Library.Holder.Instance,
-                    AnchorPoint = Vector2New(0, 0),
+                    AnchorPoint = Library.Mobile and Vector2New(0.5, 0.5) or Vector2New(0, 0),
                     Name = "\0",
-                    Position = UDim2New(0, 0, 0, 0),
+                    Position = Library.Mobile and UDim2New(0.5, 0, 0.5, 0) or UDim2New(0, 0, 0, 0),
                     BorderColor3 = FromRGB(10, 10, 10),
                     Size = Window.Size,
                     BorderSizePixel = 2,
                     BackgroundColor3 = FromRGB(15, 15, 20)
                 })  Items["MainFrame"]:AddToTheme({BackgroundColor3 = "Background", BorderColor3 = "Border"})
 
-                Items["MainFrame"].Instance.Position = UDim2New(0, Camera.ViewportSize.X / 4, 0, Camera.ViewportSize.Y / 4)
+                if not Library.Mobile then
+                    Items["MainFrame"].Instance.Position = UDim2New(0, Camera.ViewportSize.X / 4, 0, Camera.ViewportSize.Y / 4)
+                end
 
                 Items["MainFrame"]:MakeDraggable()
-                Items["MainFrame"]:MakeResizeable(Vector2New(Window.Size.X.Offset, Window.Size.Y.Offset), Vector2New(9999, 9999))
+                if not Library.Mobile then
+                    Items["MainFrame"]:MakeResizeable(Vector2New(Window.Size.X.Offset, Window.Size.Y.Offset), Vector2New(9999, 9999))
+                end
+
+                if Library.Mobile then
+                    local MainFrame = Items["MainFrame"].Instance
+
+                    local function ClampMobilePosition()
+                        local Viewport = Camera.ViewportSize
+                        local HalfWidth = MainFrame.AbsoluteSize.X / 2
+                        local HalfHeight = MainFrame.AbsoluteSize.Y / 2
+                        local CenterX = MainFrame.AbsolutePosition.X + HalfWidth
+                        local CenterY = MainFrame.AbsolutePosition.Y + HalfHeight
+
+                        CenterX = MathClamp(CenterX, HalfWidth, Viewport.X - HalfWidth)
+                        CenterY = MathClamp(CenterY, HalfHeight, Viewport.Y - HalfHeight)
+                        MainFrame.Position = UDim2New(0, CenterX, 0, CenterY)
+                    end
+
+                    ClampMobilePosition()
+
+                    local mobileDragEndConnName = "Window_MobileDragEnd_" .. HttpService:GenerateGUID(false)
+                    Library:Connect(UserInputService.InputEnded, function(Input)
+                        if Input.UserInputType == Enum.UserInputType.Touch or Input.UserInputType == Enum.UserInputType.MouseButton1 then
+                            ClampMobilePosition()
+                        end
+                    end, mobileDragEndConnName)
+                    Window._MobileDragEndConnName = mobileDragEndConnName
+                end
                 
                 Items["AccentBorder"] = Instances:Create("UIStroke", {
                     Parent = Items["MainFrame"].Instance,

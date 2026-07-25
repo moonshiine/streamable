@@ -1,4 +1,4 @@
---hola cloneref + opti
+--hola cloneref + opti fix1
 --tysm cp77
     --[[
         Made by samet
@@ -802,15 +802,20 @@
                 self = nil
             end
 
-            Instances.MakeDraggable = function(self)
-                if not self.Instance then 
+            -- MakeDraggable(Handle): if a Handle wrapper/instance is given the drag can
+            -- only START on that handle (e.g. the window header), so touching a slider,
+            -- dropdown or any content element never begins a window drag. Without a handle
+            -- the whole frame is the handle (watermark/keybind list/colorpicker windows).
+            Instances.MakeDraggable = function(self, Handle)
+                if not self.Instance then
                     return
                 end
 
                 local Gui = self.Instance
+                local HandleInst = (Handle and Handle.Instance) or Handle or Gui
 
                 -- [OPTIMIZATION] Use dragger object for centralized handler
-                local Dragger = { Dragging = false }
+                local Dragger = { Dragging = false, ActiveInput = nil }
                 local DragStart
                 local StartPosition
                 local StartAbsPosition
@@ -818,7 +823,12 @@
                 local VisibleBefore
 
                 local LastDragUpdate = 0
-                local Set = function(Input)
+                -- Called by the central handler ONLY while this dragger owns the gesture.
+                function Dragger:UpdateInput(Input)
+                    if not Dragger.Dragging then
+                        return
+                    end
+
                     local now = os.clock()
                     if now - LastDragUpdate < (1/60) then
                         return
@@ -842,95 +852,125 @@
                     end
                 end
 
-                self:Connect("InputBegan", function(Input)
-                    if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                        Dragger.Dragging = true
+                local dragBeganName = "Drag_Began_" .. HttpService:GenerateGUID(false)
+                local dragBeganConn = Library:Connect(HandleInst.InputBegan, function(Input)
+                    if Input.UserInputType ~= Enum.UserInputType.MouseButton1 and Input.UserInputType ~= Enum.UserInputType.Touch then
+                        return
+                    end
+                    -- Do not steal the finger if a slider (or another gesture) already owns it
+                    if not Library:CanStartGesture() then
+                        return
+                    end
 
-                        DragStart = Input.Position
-                        StartPosition = Gui.Position
-                        StartAbsPosition = Gui.AbsolutePosition
+                    Dragger.Dragging = true
+                    Dragger.ActiveInput = Input
+                    DragStart = Input.Position
+                    StartPosition = Gui.Position
+                    StartAbsPosition = Gui.AbsolutePosition
+                    Library:SetGesture(Dragger, Input)
 
-                        -- create a lightweight ghost in the top-level holder to avoid costly rendering during drag
-                        if Library and Library.Holder and Library.Holder.Instance then
-                            DragGhost = Instances:Create("Frame", {
-                                Parent = Library.Holder.Instance,
-                                Name = "\0",
-                                Position = UDim2New(0, StartAbsPosition.X, 0, StartAbsPosition.Y),
-                                Size = UDim2New(0, Gui.AbsoluteSize.X, 0, Gui.AbsoluteSize.Y),
-                                BackgroundColor3 = Gui.BackgroundColor3 or Library.Theme.Background,
-                                BackgroundTransparency = 0.15,
-                                BorderSizePixel = 0,
-                                ZIndex = 10000 -- Ghost debajo de la imagen
-                            })
-                            
-                            -- Add drag image overlay
-                            local DragImage = Instances:Create("ImageLabel", {
-                                Parent = DragGhost.Instance,
-                                Name = "DragImage",
-                                Size = UDim2.new(1, 0, 1, 0),
-                                Position = UDim2.new(0, 0, 0, 0),
-                                BackgroundTransparency = 1,
-                                BorderSizePixel = 0,
-                                ZIndex = 10001, -- Imagen siempre encima del ghost
-                                ScaleType = Enum.ScaleType.Stretch,
-                                ImageTransparency = 0.75,
-                                Image = ""
-                            })
-                            
-                            -- Try to load custom asset for drag image
-                            local success, result = pcall(function()
-                                if getcustomasset then
-                                    if isfile("67.webp") then
-                                        local asset = getcustomasset("67.webp")
-                                        if asset then
-                                            DragImage.Instance.Image = asset
-                                        end
+                    -- create a lightweight ghost in the top-level holder to avoid costly rendering during drag
+                    if Library and Library.Holder and Library.Holder.Instance then
+                        DragGhost = Instances:Create("Frame", {
+                            Parent = Library.Holder.Instance,
+                            Name = "\0",
+                            Position = UDim2New(0, StartAbsPosition.X, 0, StartAbsPosition.Y),
+                            Size = UDim2New(0, Gui.AbsoluteSize.X, 0, Gui.AbsoluteSize.Y),
+                            BackgroundColor3 = Gui.BackgroundColor3 or Library.Theme.Background,
+                            BackgroundTransparency = 0.15,
+                            BorderSizePixel = 0,
+                            ZIndex = 10000 -- Ghost debajo de la imagen
+                        })
+
+                        -- Add drag image overlay
+                        local DragImage = Instances:Create("ImageLabel", {
+                            Parent = DragGhost.Instance,
+                            Name = "DragImage",
+                            Size = UDim2.new(1, 0, 1, 0),
+                            Position = UDim2.new(0, 0, 0, 0),
+                            BackgroundTransparency = 1,
+                            BorderSizePixel = 0,
+                            ZIndex = 10001, -- Imagen siempre encima del ghost
+                            ScaleType = Enum.ScaleType.Stretch,
+                            ImageTransparency = 0.75,
+                            Image = ""
+                        })
+
+                        -- Try to load custom asset for drag image
+                        local success, result = pcall(function()
+                            if getcustomasset then
+                                if isfile("67.webp") then
+                                    local asset = getcustomasset("67.webp")
+                                    if asset then
+                                        DragImage.Instance.Image = asset
                                     end
                                 end
-                            end)
-                            
-                            -- Fallback: show a simple icon if no custom asset
-                            if not success or not DragImage.Instance.Image or DragImage.Instance.Image == "" then
-                                DragImage.Instance.Image = "rbxasset://textures/ui/Controls/pointer.png"
                             end
-                            
-                            Dragger._Ghost = DragGhost
+                        end)
+
+                        -- Fallback: show a simple icon if no custom asset
+                        if not success or not DragImage.Instance.Image or DragImage.Instance.Image == "" then
+                            DragImage.Instance.Image = "rbxasset://textures/ui/Controls/pointer.png"
                         end
 
-                        -- hide the heavy GUI while dragging to reduce re-render cost
-                        VisibleBefore = Gui.Visible
-                        Gui.Visible = false
+                        Dragger._Ghost = DragGhost
                     end
-                end)
 
-                self:Connect("InputEnded", function(Input)
-                    if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                        Dragger.Dragging = false
+                    -- hide the heavy GUI while dragging to reduce re-render cost
+                    VisibleBefore = Gui.Visible
+                    Gui.Visible = false
+                end, dragBeganName)
+                if dragBeganConn and dragBeganConn.Name then
+                    self._Connections = self._Connections or {}
+                    TableInsert(self._Connections, dragBeganConn.Name)
+                end
 
-                        -- compute final position based on start and last input delta
-                        if DragStart and StartPosition then
-                            local DragDelta = Input.Position - DragStart
-                            local finalPos = UDim2New(StartPosition.X.Scale, StartPosition.X.Offset + DragDelta.X, StartPosition.Y.Scale, StartPosition.Y.Offset + DragDelta.Y)
-                            pcall(function()
-                                Gui.Position = finalPos
-                            end)
-                        end
-
-                        -- clean up ghost and restore visibility
-                        if DragGhost and DragGhost.Clean then
-                            pcall(function() DragGhost:Clean() end)
-                        elseif DragGhost and DragGhost.Instance then
-                            pcall(function() DragGhost.Instance:Destroy() end)
-                        end
-                        DragGhost = nil
-                        Dragger._Ghost = nil
-
-                        Gui.Visible = VisibleBefore
+                -- Finalize from UserInputService so a finger that ends off the handle still
+                -- releases the drag; for touch only the ORIGINATING finger may end it.
+                local dragEndedName = "Drag_Ended_" .. HttpService:GenerateGUID(false)
+                local dragEndedConn = Library:Connect(UserInputService.InputEnded, function(Input)
+                    if not Dragger.Dragging then
+                        return
                     end
-                end)
+                    if Input.UserInputType == Enum.UserInputType.Touch then
+                        if Input ~= Dragger.ActiveInput then
+                            return
+                        end
+                    elseif Input.UserInputType ~= Enum.UserInputType.MouseButton1 then
+                        return
+                    end
+
+                    Dragger.Dragging = false
+
+                    -- compute final position based on start and last input delta
+                    if DragStart and StartPosition then
+                        local DragDelta = Input.Position - DragStart
+                        local finalPos = UDim2New(StartPosition.X.Scale, StartPosition.X.Offset + DragDelta.X, StartPosition.Y.Scale, StartPosition.Y.Offset + DragDelta.Y)
+                        pcall(function()
+                            Gui.Position = finalPos
+                        end)
+                    end
+
+                    -- clean up ghost and restore visibility
+                    if DragGhost and DragGhost.Clean then
+                        pcall(function() DragGhost:Clean() end)
+                    elseif DragGhost and DragGhost.Instance then
+                        pcall(function() DragGhost.Instance:Destroy() end)
+                    end
+                    DragGhost = nil
+                    Dragger._Ghost = nil
+
+                    Gui.Visible = VisibleBefore
+                    Dragger.ActiveInput = nil
+                    Library:ClearGesture(Dragger)
+                end, dragEndedName)
+                if dragEndedConn and dragEndedConn.Name then
+                    self._Connections = self._Connections or {}
+                    TableInsert(self._Connections, dragEndedConn.Name)
+                end
 
                 -- [OPTIMIZATION] Use centralized input handler
-                Library:RegisterDragger(Dragger, Set)
+                Library:RegisterDragger(Dragger, function(Input) Dragger:UpdateInput(Input) end)
                 self._Dragger = Dragger
 
                 return Dragger.Dragging
@@ -1193,7 +1233,11 @@
             -- mark unloaded so delayed callbacks (notifications, timeouts) abort safely
             self._Unloaded = true
 
-            for _, Value in pairs(self.Connections) do 
+            -- drop any in-progress gesture so no dangling owner survives unload
+            self._GestureOwner = nil
+            self._GestureInput = nil
+
+            for _, Value in pairs(self.Connections) do
                 if Value.Connection then Value.Connection:Disconnect() end
             end
 
@@ -1267,26 +1311,57 @@
             return self.Metrics or {}
         end
         
+        -- [GESTURE OWNERSHIP] Only ONE gesture (slider drag / window drag) may own a
+        -- pointer at a time. Fixes touch conflict where a slider drag and the window
+        -- drag captured the same finger. Colorpickers/resizers stay on the legacy path.
+        Library._GestureOwner = nil   -- object with :UpdateInput(Input)
+        Library._GestureInput = nil   -- the exact InputObject that started the gesture
+
+        Library.CanStartGesture = function(self)
+            return self._GestureOwner == nil
+        end
+
+        Library.SetGesture = function(self, Owner, Input)
+            self._GestureOwner = Owner
+            self._GestureInput = Input
+        end
+
+        Library.ClearGesture = function(self, Owner)
+            -- only the current owner may release the gesture
+            if not Owner or self._GestureOwner == Owner then
+                self._GestureOwner = nil
+                self._GestureInput = nil
+            end
+        end
+
         -- [OPTIMIZATION] Setup a single centralized InputChanged handler
         -- This replaces 100+ individual connections with ONE connection
         Library.SetupCentralInputHandler = function(self)
             if self._InputHandlerSetup then return end
             self._InputHandlerSetup = true
-            
+
             -- Single InputChanged connection for ALL sliders, colorpickers, draggers, resizers
             Library:Connect(UserInputService.InputChanged, function(Input)
-                if Input.UserInputType ~= Enum.UserInputType.MouseMovement and Input.UserInputType ~= Enum.UserInputType.Touch then
+                local InputType = Input.UserInputType
+                if InputType ~= Enum.UserInputType.MouseMovement and InputType ~= Enum.UserInputType.Touch then
                     return
                 end
-                
-                -- Handle active sliders (usually only 0-1 at a time)
-                for slider, callback in pairs(self._ActiveSliders) do
-                    if slider.Sliding then
-                        callback(Input)
+
+                -- Exclusive gesture (slider / window drag): route ONLY to the owner.
+                -- While a gesture is owned nothing else processes this movement, so a
+                -- slider and the window can never both move on the same finger.
+                local Owner = self._GestureOwner
+                if Owner then
+                    if InputType == Enum.UserInputType.Touch and Input ~= self._GestureInput then
+                        return -- a different finger, ignore it entirely
                     end
+                    if Owner.UpdateInput then
+                        Owner:UpdateInput(Input)
+                    end
+                    return
                 end
-                
-                -- Handle active colorpickers (palette/hue/alpha sliding)
+
+                -- No exclusive owner: colorpickers (palette/hue/alpha) still work as before
                 for picker, callbacks in pairs(self._ActiveColorpickers) do
                     if callbacks.palette and picker.SlidingPalette then
                         callbacks.palette(Input)
@@ -1298,15 +1373,8 @@
                         callbacks.alpha(Input)
                     end
                 end
-                
-                -- Handle active draggers
-                for dragger, callback in pairs(self._ActiveDraggers) do
-                    if dragger.Dragging then
-                        callback(Input)
-                    end
-                end
-                
-                -- Handle active resizers
+
+                -- Resizers (desktop only) also stay on the legacy path
                 for resizer, callback in pairs(self._ActiveResizers) do
                     if resizer.Resizing then
                         callback(Input)
@@ -3050,7 +3118,21 @@
                     Items["MainFrame"].Instance.Position = UDim2New(0, Camera.ViewportSize.X / 4, 0, Camera.ViewportSize.Y / 4)
                 end
 
-                Items["MainFrame"]:MakeDraggable()
+                -- Transparent header strip: the window can ONLY be dragged from here, so
+                -- touching a slider/dropdown/etc in the content never starts a window drag.
+                Items["DragHandle"] = Instances:Create("TextButton", {
+                    Parent = Items["MainFrame"].Instance,
+                    BackgroundTransparency = 1,
+                    Text = "",
+                    AutoButtonColor = false,
+                    Name = "\0",
+                    Size = UDim2New(1, 0, 0, 20),
+                    Position = UDim2New(0, 0, 0, 0),
+                    BorderSizePixel = 0,
+                    ZIndex = 5
+                })
+
+                Items["MainFrame"]:MakeDraggable(Items["DragHandle"])
                 if not Library.Mobile then
                     Items["MainFrame"]:MakeResizeable(Vector2New(Window.Size.X.Offset, Window.Size.Y.Offset), Vector2New(9999, 9999))
                 end
@@ -4729,29 +4811,60 @@
                 Items["Slider"].Instance.Visible = Bool
             end
 
-            Items["RealSlider"]:Connect("MouseButton1Down", function()
-                Slider.Sliding = true
+            -- Follow the actual pointer (works for both mouse and a specific touch finger).
+            local function SliderValueFromInput(Input)
+                local RealSlider = Items["RealSlider"].Instance
+                local Percentage = MathClamp((Input.Position.X - RealSlider.AbsolutePosition.X) / RealSlider.AbsoluteSize.X, 0, 1)
+                return Slider.Min + ((Slider.Max - Slider.Min) * Percentage)
+            end
 
-                local MousePos = UserInputService:GetMouseLocation()
-
-                local SizeX = (MousePos.X - Items["RealSlider"].Instance.AbsolutePosition.X) / Items["RealSlider"].Instance.AbsoluteSize.X
-                local Value = ((Slider.Max - Slider.Min) * SizeX) + Slider.Min
-
-                Slider:Set(Value)
-            end)
-
-            Items["RealSlider"]:Connect("InputEnded", function(Input)
-                if Input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    Slider.Sliding = false
+            -- Called by the central handler ONLY while this slider owns the gesture.
+            function Slider:UpdateInput(Input)
+                if not Slider.Sliding then
+                    return
                 end
+                Slider:Set(SliderValueFromInput(Input))
+            end
+
+            Items["RealSlider"]:Connect("InputBegan", function(Input)
+                if Input.UserInputType ~= Enum.UserInputType.MouseButton1 and Input.UserInputType ~= Enum.UserInputType.Touch then
+                    return
+                end
+                -- Claim the gesture so the window drag cannot start on this same finger
+                if not Library:CanStartGesture() then
+                    return
+                end
+
+                Slider.Sliding = true
+                Slider.ActiveInput = Input
+                Library:SetGesture(Slider, Input)
+                Slider:Set(SliderValueFromInput(Input))
             end)
 
-            -- [OPTIMIZATION] Use centralized input handler instead of individual connection
+            -- End from UserInputService so releasing off the bar still stops the slide;
+            -- for touch only the originating finger may end it.
+            local sliderEndName = "Slider_End_" .. HttpService:GenerateGUID(false)
+            Library:Connect(UserInputService.InputEnded, function(Input)
+                if not Slider.Sliding then
+                    return
+                end
+                if Input.UserInputType == Enum.UserInputType.Touch then
+                    if Input ~= Slider.ActiveInput then
+                        return
+                    end
+                elseif Input.UserInputType ~= Enum.UserInputType.MouseButton1 then
+                    return
+                end
+
+                Slider.Sliding = false
+                Slider.ActiveInput = nil
+                Library:ClearGesture(Slider)
+            end, sliderEndName)
+            Items["Slider"]._InputConnName = sliderEndName
+
+            -- [OPTIMIZATION] Centralized handler routes movement to the gesture owner only
             Library:RegisterSlider(Slider, function(Input)
-                local MousePos = UserInputService:GetMouseLocation()
-                local SizeX = (MousePos.X - Items["RealSlider"].Instance.AbsolutePosition.X) / Items["RealSlider"].Instance.AbsoluteSize.X
-                local Value = ((Slider.Max - Slider.Min) * SizeX) + Slider.Min
-                Slider:Set(Value)
+                Slider:UpdateInput(Input)
             end)
 
             if Slider.Default then
